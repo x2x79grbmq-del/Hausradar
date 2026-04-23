@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0f10" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>HausRadar V4</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg:#0b0f10; --panel:#151b1d; --panel2:#1b2325; --line:#2b3430;
+      --text:#f4f7f5; --muted:#95a29d; --green:#98ff2f; --green-soft:rgba(152,255,47,.12);
+      --green-line:#4a6a20; --blue-soft:rgba(112,171,255,.12); --blue-line:#365e92;
+      --red-soft:rgba(255,107,97,.12); --red-line:#6c2b25; --amber-soft:rgba(255,190,50,.12);
+      --amber-line:#705817; --radius:18px;
+    }
+    * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    body {
+      margin:0; font-family:Arial,Helvetica,sans-serif; color:var(--text);
+      background:
+        radial-gradient(circle at top, rgba(152,255,47,.08), transparent 28%),
+        linear-gradient(180deg,#0f1415,#0a0d0e 80%);
+    }
+    .app { max-width:430px; min-height:100vh; margin:0 auto; padding-bottom:96px; }
+    .status {
+      padding:calc(env(safe-area-inset-top) + 10px) 18px 8px;
+      display:flex; justify-content:space-between; color:var(--muted); font-size:12px;
+    }
+    .screen { display:none; padding:8px 16px 18px; }
+    .screen.active { display:block; }
+    .hero {
+      width:96px; height:96px; border-radius:28px; margin:22px auto 14px;
+      display:flex; align-items:center; justify-content:center; font-size:42px;
+      border:1px solid #33412f;
+      background:radial-gradient(circle at 30% 30%, #22311b, #0d1112 72%);
+      box-shadow:0 18px 36px rgba(0,0,0,.35);
+    }
+    .title { font-size:34px; font-weight:900; text-align:center; margin:0 0 8px; }
+    .sub { text-align:center; color:var(--muted); line-height:1.5; font-size:14px; }
+    .card {
+      background:linear-gradient(180deg,var(--panel2),var(--panel));
+      border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin:12px 0;
+    }
+    .row { display:flex; align-items:center; gap:10px; }
+    .space { justify-content:space-between; }
+    .small { color:var(--muted); font-size:12px; }
+    h1,h2,h3,p { margin:0; }
+    h2 { font-size:24px; margin-bottom:4px; }
+    input, textarea, select {
+      width:100%; margin-top:8px; padding:12px 13px; border-radius:12px;
+      border:1px solid #36403d; background:#0f1415; color:var(--text); font-size:14px;
+    }
+    textarea { min-height:90px; resize:vertical; }
+    button {
+      width:100%; margin-top:10px; padding:14px; border-radius:14px; border:0;
+      background:var(--green); color:#111; font-weight:800; font-size:14px;
+    }
+    .btn-dark {
+      background:#1a2022; color:var(--text); border:1px solid var(--line);
+    }
+    .btn-mini {
+      width:auto; display:inline-block; padding:10px 12px; margin-right:8px;
+    }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .quick { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .quick a {
+      text-decoration:none; color:var(--text); background:#141a1c; border:1px solid #24302d;
+      border-radius:16px; padding:14px; display:block;
+    }
+    .quick strong { display:block; margin-bottom:5px; }
+    .score {
+      display:inline-block; padding:8px 10px; border-radius:999px; font-size:12px; font-weight:800;
+      background:var(--green-soft); border:1px solid var(--green-line); color:#e1ffc2;
+    }
+    .badge {
+      display:inline-block; padding:7px 9px; border-radius:999px; font-size:12px; margin:5px 6px 0 0;
+      border:1px solid var(--line); background:#1a2022;
+    }
+    .badge.green { background:var(--green-soft); border-color:var(--green-line); color:#e1ffc2; }
+    .badge.blue { background:var(--blue-soft); border-color:var(--blue-line); color:#dbe9ff; }
+    .badge.red { background:var(--red-soft); border-color:var(--red-line); color:#ffc3bc; }
+    .badge.amber { background:var(--amber-soft); border-color:var(--amber-line); color:#ffe1a1; }
+    .nav {
+      position:fixed; left:50%; transform:translateX(-50%); bottom:0; width:min(430px,100%);
+      display:flex; gap:8px; padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+      background:linear-gradient(180deg,rgba(11,15,16,.06),rgba(11,15,16,.97) 35%);
+      border-top:1px solid rgba(255,255,255,.05);
+    }
+    .nav a {
+      flex:1; text-decoration:none; text-align:center; color:var(--muted);
+      background:#1a2022; border:1px solid var(--line); border-radius:14px; padding:10px 4px; font-size:11px;
+    }
+    .nav a.active { background:var(--green-soft); border-color:var(--green-line); color:#ecffd7; }
+    .place-card { border-top:1px solid #27312e; padding-top:12px; margin-top:12px; }
+    .gallery { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+    .photo { width:100%; height:110px; border-radius:12px; object-fit:cover; border:1px solid #313a37; background:#0f1415; }
+    .notice {
+      padding:12px; border-radius:12px; margin-top:10px; font-size:13px;
+      background:var(--blue-soft); border:1px solid var(--blue-line); color:#dbe7ff;
+    }
+    .danger { background:var(--red-soft); border:1px solid var(--red-line); color:#ffc3bc; }
+    .hidden { display:none !important; }
+    .loading { opacity:.7; pointer-events:none; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="status"><span id="clock">21:45</span><span>HausRadar V4</span></div>
+
+  <section class="screen active" id="splash">
+    <div class="hero">🏚</div>
+    <h1 class="title">HausRadar</h1>
+    <div class="sub">V4 echte App mit Supabase: Registrierung, Login, Lost Places, Kategorien, Kommentare, Foto-Upload und Rollen.</div>
+    <div class="card">
+      <span class="badge green">Supabase live</span>
+      <span class="badge blue">echte Nutzer</span>
+      <span class="badge amber">Foto-Upload</span>
+      <span class="badge red">Admin-Rechte</span>
+    </div>
+    <button onclick="show('auth')">Los geht's</button>
+  </section>
+
+  <section class="screen" id="auth">
+    <div class="card">
+      <h2>Anmelden</h2>
+      <div class="small">Mit echter Registrierung über Supabase</div>
+      <input id="email" type="email" placeholder="E-Mail" />
+      <input id="password" type="password" placeholder="Passwort" />
+      <input id="display_name" placeholder="Anzeigename" />
+      <button onclick="signIn()">Einloggen</button>
+      <button class="btn-dark" onclick="signUp()">Registrieren</button>
+      <div id="authMsg" class="notice hidden"></div>
+    </div>
+  </section>
+
+  <section class="screen" id="home">
+    <div class="card">
+      <div class="row space">
+        <div>
+          <h2>Willkommen</h2>
+          <div class="small" id="whoami">-</div>
+        </div>
+        <span class="score" id="roleBadge">user</span>
+      </div>
+      <div class="quick" style="margin-top:12px">
+        <a href="#" onclick="show('places'); return false;"><strong>Lost Places</strong><span class="small">Orte speichern und verwalten</span></a>
+        <a href="#" onclick="show('profile'); return false;"><strong>Profil</strong><span class="small">Rolle und Kontodaten</span></a>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Was jetzt echt funktioniert</h3>
+      <div class="small" style="margin-top:8px">
+        Registrierung, Login, dauerhafte Lost-Places, Kommentare, Fotos und Rechte-System über Supabase.
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="places">
+    <div class="card">
+      <h2>Neuen Lost Place anlegen</h2>
+      <div class="grid2">
+        <input id="lp_name" placeholder="Name" />
+        <input id="lp_coords" placeholder="51.2562, 7.1508" />
+      </div>
+      <select id="lp_category">
+        <option>Haus</option>
+        <option>Villa</option>
+        <option>Industrie</option>
+        <option>Bauernhof</option>
+        <option>Bunker</option>
+        <option>Sonstiges</option>
+      </select>
+      <textarea id="lp_desc" placeholder="Beschreibung"></textarea>
+      <button onclick="createPlace()">Ort speichern</button>
+      <div id="placeCreateMsg" class="notice hidden"></div>
+    </div>
+
+    <div class="card">
+      <h3>Kategorie filtern</h3>
+      <select id="categoryFilter" onchange="loadPlaces()">
+        <option>Alle</option>
+        <option>Haus</option>
+        <option>Villa</option>
+        <option>Industrie</option>
+        <option>Bauernhof</option>
+        <option>Bunker</option>
+        <option>Sonstiges</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <h2>Gespeicherte Orte</h2>
+      <div id="placesList" class="small">Lade Orte ...</div>
+    </div>
+  </section>
+
+  <section class="screen" id="profile">
+    <div class="card">
+      <h2>Profil</h2>
+      <div class="small" id="profileInfo">-</div>
+      <button class="btn-dark" onclick="signOutUser()">Abmelden</button>
+    </div>
+    <div class="card">
+      <h3>Projekt</h3>
+      <div class="small">Supabase verbunden mit deiner echten Datenbank.</div>
+    </div>
+  </section>
+</div>
+
+<div class="nav hidden" id="nav">
+  <a href="#" class="active" data-target="home" onclick="show('home');return false;">Home</a>
+  <a href="#" data-target="places" onclick="show('places');return false;">Lost Places</a>
+  <a href="#" data-target="profile" onclick="show('profile');return false;">Profil</a>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://qvurspabnycapkdqghcz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_qxi95bPYaRUrBuBjE8iD2A_gE3SVe2C';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let currentProfile = null;
+
+function clockTick() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+clockTick(); setInterval(clockTick, 30000);
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav a').forEach(a => a.classList.remove('active'));
+  const link = document.querySelector('.nav a[data-target="'+id+'"]');
+  if (link) link.classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+  if (id === 'places') loadPlaces();
+  if (id === 'profile') renderProfile();
+}
+
+function setMsg(id, text, isError=false) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.classList.remove('hidden');
+  el.classList.toggle('danger', isError);
+}
+
+async function signUp() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const displayName = document.getElementById('display_name').value.trim() || 'User';
+  const { data, error } = await sb.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { display_name: displayName }
+    }
+  });
+  if (error) {
+    setMsg('authMsg', error.message, true);
+    return;
+  }
+  setMsg('authMsg', 'Registrierung erfolgreich. Prüfe ggf. deine E-Mail-Bestätigung und logge dich dann ein.');
+}
+
+async function signIn() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) {
+    setMsg('authMsg', error.message, true);
+    return;
+  }
+}
+
+async function signOutUser() {
+  await sb.auth.signOut();
+}
+
+async function ensureProfile(user) {
+  const displayName = user.user_metadata?.display_name || user.email?.split('@')[0] || 'User';
+  let { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
+  if (!profile) {
+    const { error } = await sb.from('profiles').insert({
+      id: user.id,
+      display_name: displayName,
+      role: 'user'
+    });
+    if (!error) {
+      const res = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
+      profile = res.data;
+    }
+  }
+  currentProfile = profile || { id: user.id, display_name: displayName, role: 'user' };
+}
+
+function renderHome() {
+  document.getElementById('whoami').textContent = (currentProfile?.display_name || currentUser?.email || '-') + ' · ' + (currentProfile?.role || 'user');
+  document.getElementById('roleBadge').textContent = currentProfile?.role || 'user';
+  document.getElementById('nav').classList.remove('hidden');
+}
+
+function renderProfile() {
+  document.getElementById('profileInfo').textContent =
+    'Name: ' + (currentProfile?.display_name || '-') +
+    ' · Rolle: ' + (currentProfile?.role || 'user') +
+    ' · E-Mail: ' + (currentUser?.email || '-');
+}
+
+function isAdmin() {
+  return currentProfile?.role === 'admin';
+}
+
+function canEdit(place) {
+  return isAdmin() || place.created_by === currentUser?.id;
+}
+
+async function createPlace() {
+  const name = document.getElementById('lp_name').value.trim();
+  const coords = document.getElementById('lp_coords').value.trim();
+  const category = document.getElementById('lp_category').value;
+  const description = document.getElementById('lp_desc').value.trim();
+  if (!name || !coords) {
+    setMsg('placeCreateMsg', 'Bitte Name und Koordinaten eintragen.', true);
+    return;
+  }
+  const parts = coords.split(',').map(x => x.trim());
+  if (parts.length !== 2) {
+    setMsg('placeCreateMsg', 'Koordinaten bitte als "lat, lng" eingeben.', true);
+    return;
+  }
+  const lat = Number(parts[0]);
+  const lng = Number(parts[1]);
+  const { error } = await sb.from('lost_places').insert({
+    name,
+    category,
+    description,
+    latitude: lat,
+    longitude: lng,
+    created_by: currentUser.id
+  });
+  if (error) {
+    setMsg('placeCreateMsg', error.message, true);
+    return;
+  }
+  document.getElementById('lp_name').value = '';
+  document.getElementById('lp_coords').value = '';
+  document.getElementById('lp_desc').value = '';
+  setMsg('placeCreateMsg', 'Ort gespeichert.');
+  await loadPlaces();
+}
+
+async function updatePlace(id) {
+  const name = document.getElementById('edit_name_' + id).value.trim();
+  const description = document.getElementById('edit_desc_' + id).value.trim();
+  const { error } = await sb.from('lost_places').update({
+    name,
+    description
+  }).eq('id', id);
+  if (error) {
+    alert(error.message);
+    return;
+  }
+  await loadPlaces();
+}
+
+async function addComment(placeId) {
+  const input = document.getElementById('comment_' + placeId);
+  const text = input.value.trim();
+  if (!text) return;
+  const { error } = await sb.from('comments').insert({
+    place_id: placeId,
+    user_id: currentUser.id,
+    content: text
+  });
+  if (error) {
+    alert(error.message);
+    return;
+  }
+  input.value = '';
+  await loadPlaces();
+}
+
+async function uploadPhoto(placeId) {
+  const fileInput = document.getElementById('photo_' + placeId);
+  const file = fileInput.files[0];
+  if (!file) return;
+  const ext = file.name.split('.').pop();
+  const path = currentUser.id + '/' + placeId + '/' + Date.now() + '.' + ext;
+  const { error: uploadError } = await sb.storage.from('place-photos').upload(path, file);
+  if (uploadError) {
+    alert(uploadError.message);
+    return;
+  }
+  const { data: publicData } = sb.storage.from('place-photos').getPublicUrl(path);
+  const { error } = await sb.from('photos').insert({
+    place_id: placeId,
+    user_id: currentUser.id,
+    image_url: publicData.publicUrl
+  });
+  if (error) {
+    alert(error.message);
+    return;
+  }
+  await loadPlaces();
+}
+
+function googleStreetView(lat, lng) {
+  return 'https://www.google.com/maps?q=&layer=c&cbll=' + lat + ',' + lng;
+}
+
+async function loadPlaces() {
+  const filter = document.getElementById('categoryFilter').value;
+  let query = sb.from('lost_places').select('*').order('created_at', { ascending:false });
+  if (filter !== 'Alle') query = query.eq('category', filter);
+  const { data: places, error } = await query;
+  if (error) {
+    document.getElementById('placesList').innerHTML = '<div class="notice danger">' + error.message + '</div>';
+    return;
+  }
+  if (!places || !places.length) {
+    document.getElementById('placesList').innerHTML = '<div class="small">Noch keine Orte gespeichert.</div>';
+    return;
+  }
+
+  const ids = places.map(p => p.id);
+  const creatorIds = [...new Set(places.map(p => p.created_by).filter(Boolean))];
+
+  const [commentsRes, photosRes, profilesRes] = await Promise.all([
+    sb.from('comments').select('*').in('place_id', ids).order('created_at', { ascending:true }),
+    sb.from('photos').select('*').in('place_id', ids).order('created_at', { ascending:false }),
+    creatorIds.length ? sb.from('profiles').select('id, display_name, role').in('id', creatorIds) : Promise.resolve({ data: [] })
+  ]);
+
+  const comments = commentsRes.data || [];
+  const photos = photosRes.data || [];
+  const profiles = profilesRes.data || [];
+  const nameById = Object.fromEntries(profiles.map(p => [p.id, p.display_name || 'User']));
+
+  document.getElementById('placesList').innerHTML = places.map(place => {
+    const placeComments = comments.filter(c => c.place_id === place.id);
+    const placePhotos = photos.filter(p => p.place_id === place.id);
+    const creatorName = nameById[place.created_by] || 'User';
+    return `
+      <div class="place-card" id="place_${place.id}">
+        <div class="row space">
+          <strong>${place.name}</strong>
+          <span class="score">${place.category}</span>
+        </div>
+        <div class="small" style="margin-top:8px;">Koordinaten: ${place.latitude}, ${place.longitude}</div>
+        <div class="small" style="margin-top:6px;">Ersteller: ${creatorName}</div>
+        <div class="small" style="margin-top:6px;">${place.description || ''}</div>
+
+        ${canEdit(place) ? `
+          <input id="edit_name_${place.id}" value="${place.name}">
+          <textarea id="edit_desc_${place.id}">${place.description || ''}</textarea>
+          <button class="btn-dark" onclick="updatePlace(${place.id})">Änderungen speichern</button>
+        ` : `<div class="small" style="margin-top:10px;">Nur Ersteller/Admin können Name und Beschreibung ändern.</div>`}
+
+        <button class="btn-dark" onclick="window.open('${googleStreetView(place.latitude, place.longitude)}','_blank')">Street View öffnen</button>
+
+        <hr>
+        <strong>Kommentare</strong>
+        ${placeComments.length ? placeComments.map(c => `
+          <div class="card">
+            <div><strong>Kommentar</strong></div>
+            <div class="small" style="margin-top:6px;">${c.content}</div>
+          </div>
+        `).join('') : '<div class="small" style="margin-top:10px;">Noch keine Kommentare.</div>'}
+        <textarea id="comment_${place.id}" placeholder="Kommentar"></textarea>
+        <button class="btn-dark" onclick="addComment(${place.id})">Kommentar speichern</button>
+
+        <hr>
+        <strong>Fotos</strong>
+        <input id="photo_${place.id}" type="file" accept="image/*">
+        <button onclick="uploadPhoto(${place.id})">Foto hochladen</button>
+        <div class="gallery">
+          ${placePhotos.length ? placePhotos.map(p => `<img class="photo" src="${p.image_url}" alt="">`).join('') : '<div class="small">Noch keine Fotos.</div>'}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function handleSession() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) {
+    currentUser = session.user;
+    await ensureProfile(currentUser);
+    renderHome();
+    renderProfile();
+    show('home');
+  } else {
+    currentUser = null;
+    currentProfile = null;
+    document.getElementById('nav').classList.add('hidden');
+    show('auth');
+  }
+}
+
+sb.auth.onAuthStateChange(async (_event, session) => {
+  if (session?.user) {
+    currentUser = session.user;
+    await ensureProfile(currentUser);
+    renderHome();
+    renderProfile();
+    show('home');
+  } else {
+    currentUser = null;
+    currentProfile = null;
+    document.getElementById('nav').classList.add('hidden');
+    show('auth');
+  }
+});
+
+handleSession();
+</script>
+</body>
+</html>
