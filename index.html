@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HausRadar V5 Pro</title>
+<style>
+body{margin:0;font-family:Arial;background:#0b1220;color:#fff}
+header{padding:16px;text-align:center;background:#111827;font-size:28px;font-weight:bold}
+nav{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:10px;background:#1f2937;position:sticky;top:0}
+nav button{padding:12px;border:0;border-radius:12px;background:#374151;color:#fff}
+section{display:none;padding:14px}
+section.active{display:block}
+.card{background:#111827;padding:14px;border-radius:16px;margin-bottom:14px}
+input,select,textarea{width:100%;padding:12px;margin:6px 0;border-radius:10px;border:0;background:#1f2937;color:#fff}
+button.main{width:100%;padding:14px;background:#10b981;border:0;border-radius:12px;color:#fff;font-size:16px}
+.small{font-size:12px;color:#9ca3af}
+.badge{padding:4px 8px;border-radius:10px;background:#2563eb;display:inline-block;margin:4px 0}
+</style>
+</head>
+<body>
+
+<header>🏠 HausRadar V5 Pro</header>
+
+<nav>
+<button onclick="showTab('home')">Home</button>
+<button onclick="showTab('map')">Map</button>
+<button onclick="showTab('lost')">Lost</button>
+<button onclick="showTab('premium')">Premium</button>
+<button onclick="showTab('admin')">Admin</button>
+</nav>
+
+<section id="home" class="active">
+<div class="card">
+<h2>Login / Registrierung</h2>
+<input id="mail" placeholder="E-Mail">
+<input id="pw" type="password" placeholder="Passwort">
+<input id="user" placeholder="Benutzername">
+<button class="main" onclick="registerUser()">Registrieren</button>
+<br><br>
+<button class="main" onclick="loginUser()">Login</button>
+<div id="status" class="small"></div>
+</div>
+</section>
+
+<section id="map">
+<div class="card">
+<h2>GPS Standort</h2>
+<button class="main" onclick="gps()">Standort holen</button>
+<div id="gps"></div>
+</div>
+</section>
+
+<section id="lost">
+<div class="card">
+<h2>Ort melden</h2>
+<input id="city" placeholder="Stadt">
+<select id="type">
+<option>Lost Place</option>
+<option>Bunker</option>
+<option>Haus</option>
+</select>
+<textarea id="desc" placeholder="Beschreibung"></textarea>
+<input type="file" accept="image/*" capture="environment">
+<button class="main" onclick="savePlace()">Speichern</button>
+<div id="places"></div>
+</div>
+</section>
+
+<section id="premium">
+<div class="card">
+<h2>Premium Bereich</h2>
+<div id="premiumInfo">Nur für Premium Nutzer</div>
+</div>
+</section>
+
+<section id="admin">
+<div class="card">
+<h2>Admin Panel</h2>
+<input id="target" placeholder="Benutzername">
+<select id="role">
+<option>free</option>
+<option>pro</option>
+<option>premium</option>
+<option>admin</option>
+</select>
+<button class="main" onclick="grant()">Freischalten</button>
+<div id="adminOut"></div>
+</div>
+</section>
+
+<script>
+let users = JSON.parse(localStorage.getItem("users")||"[]");
+let places = JSON.parse(localStorage.getItem("places")||"[]");
+let current = JSON.parse(localStorage.getItem("current")||"null");
+
+function showTab(id){
+document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+document.getElementById(id).classList.add("active");
+render();
+}
+
+function save(){
+localStorage.setItem("users",JSON.stringify(users));
+localStorage.setItem("places",JSON.stringify(places));
+localStorage.setItem("current",JSON.stringify(current));
+}
+
+function registerUser(){
+let u={
+mail:mail.value,
+pw:pw.value,
+user:user.value,
+plan:"free"
+};
+users.push(u);
+current=u;
+save();
+status.innerText="Registriert als "+u.user;
+render();
+}
+
+function loginUser(){
+let u=users.find(x=>x.mail==mail.value && x.pw==pw.value);
+if(!u){status.innerText="Login fehlgeschlagen";return;}
+current=u;
+save();
+status.innerText="Willkommen "+u.user;
+render();
+}
+
+function gps(){
+navigator.geolocation.getCurrentPosition(pos=>{
+gps.innerHTML="Lat: "+pos.coords.latitude+"<br>Lng: "+pos.coords.longitude;
+});
+}
+
+function savePlace(){
+places.push({
+city:city.value,
+type:type.value,
+desc:desc.value
+});
+save();
+render();
+}
+
+function render(){
+placesDiv="";
+places.forEach(p=>{
+placesDiv+=`<div class='card'><b>${p.city}</b><br>${p.type}<br>${p.desc}</div>`;
+});
+document.getElementById("places").innerHTML=placesDiv;
+
+if(current){
+status.innerHTML="Eingeloggt: <span class='badge'>"+current.user+"</span> Plan: "+current.plan;
+premiumInfo.innerHTML=current.plan=="premium"||current.plan=="admin"
+?"Premium aktiv ✅":"Kein Zugriff";
+}else{
+premiumInfo.innerHTML="Bitte einloggen";
+}
+}
+
+function grant(){
+if(!current || current.plan!="admin"){adminOut.innerText="Nur Admin";return;}
+let u=users.find(x=>x.user==target.value);
+if(!u){adminOut.innerText="User nicht gefunden";return;}
+u.plan=role.value;
+save();
+adminOut.innerText="Freigeschaltet: "+u.user+" => "+u.plan;
+}
+
+render();
+</script>
+
+</body>
+</html>
