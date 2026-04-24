@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HausRadar</title>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:#0b0f10;
+color:white;
+}
+header{
+padding:20px;
+text-align:center;
+font-size:28px;
+font-weight:bold;
+background:#111827;
+}
+nav{
+display:grid;
+grid-template-columns:repeat(5,1fr);
+gap:8px;
+padding:10px;
+background:#1a2022;
+}
+nav button{
+padding:12px;
+border:0;
+border-radius:12px;
+background:#374151;
+color:white;
+font-weight:bold;
+}
+section{
+display:none;
+padding:14px;
+}
+section.active{
+display:block;
+}
+.card{
+background:#111827;
+padding:14px;
+border-radius:14px;
+margin-bottom:12px;
+}
+input,select,textarea{
+width:100%;
+padding:12px;
+margin-top:8px;
+border-radius:10px;
+border:0;
+background:#1f2937;
+color:white;
+}
+button.main{
+width:100%;
+padding:14px;
+margin-top:10px;
+border:0;
+border-radius:12px;
+background:#10b981;
+color:white;
+font-size:16px;
+font-weight:bold;
+}
+.small{
+font-size:13px;
+color:#9ca3af;
+}
+.place{
+padding:12px;
+background:#1f2937;
+border-radius:12px;
+margin-top:10px;
+}
+img.logo{
+width:90px;
+height:90px;
+border-radius:20px;
+display:block;
+margin:auto;
+margin-top:20px;
+}
+</style>
+</head>
+
+<body>
+
+<header>🏚️ HausRadar</header>
+
+<img class="logo" src="https://i.imgur.com/0y0y0y0.png">
+
+<nav>
+<button onclick="showTab('home')">Home</button>
+<button onclick="showTab('lost')">Lost</button>
+<button onclick="showTab('add')">Neu</button>
+<button onclick="showTab('map')">Map</button>
+<button onclick="showTab('login')">Login</button>
+</nav>
+
+<section id="home" class="active">
+<div class="card">
+<h2>Willkommen</h2>
+<div class="small">Finde Lost Places in deiner Nähe.</div>
+</div>
+</section>
+
+<section id="login">
+<div class="card">
+<h2>Login / Registrierung</h2>
+
+<input id="mail" placeholder="E-Mail">
+<input id="pass" type="password" placeholder="Passwort">
+<input id="name" placeholder="Benutzername">
+<input id="code" placeholder="Code optional">
+
+<label class="small">
+<input type="checkbox" id="saveLogin"> Login speichern
+</label>
+
+<button class="main" onclick="register()">Registrieren</button>
+<button class="main" onclick="login()">Login</button>
+
+<div id="loginInfo" class="small"></div>
+</div>
+</section>
+
+<section id="add">
+<div class="card">
+<h2>Neuen Ort einreichen</h2>
+
+<input id="ort" placeholder="Name">
+<input id="land" placeholder="Land">
+<input id="bundesland" placeholder="Bundesland">
+<input id="stadt" placeholder="Stadt">
+
+<select id="typ">
+<option>Haus</option>
+<option>Gebäude</option>
+<option>Fabrik</option>
+</select>
+
+<input id="lat" placeholder="Latitude">
+<input id="lng" placeholder="Longitude">
+
+<textarea id="text" placeholder="Beschreibung"></textarea>
+
+<input type="file" id="foto" multiple>
+
+<button class="main" onclick="savePlace()">Speichern</button>
+</div>
+</section>
+
+<section id="lost">
+<div class="card">
+<h2>Lost Places</h2>
+
+<input id="search" placeholder="Suche..." onkeyup="loadPlaces()">
+
+<div id="list"></div>
+</div>
+</section>
+
+<section id="map">
+<div class="card">
+<h2>Karte</h2>
+<div class="small">Hier kommt später Maps rein.</div>
+</div>
+</section>
+
+<script>
+function showTab(id){
+document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+document.getElementById(id).classList.add("active");
+}
+
+let users=JSON.parse(localStorage.getItem("users")||"[]");
+let places=JSON.parse(localStorage.getItem("places")||"[]");
+
+function register(){
+let email=document.getElementById("mail").value;
+let pass=document.getElementById("pass").value;
+let name=document.getElementById("name").value;
+let code=document.getElementById("code").value;
+
+let role="user";
+let premium=false;
+
+if(code=="Lost2103"){premium=true;}
+if(code=="Lost0103"){role="admin";}
+if(code=="Anjajoel2303"){role="superadmin"; premium=true;}
+
+users.push({email,pass,name,role,premium});
+localStorage.setItem("users",JSON.stringify(users));
+
+document.getElementById("loginInfo").innerHTML="Registriert!";
+}
+
+function login(){
+let email=document.getElementById("mail").value;
+let pass=document.getElementById("pass").value;
+
+let user=users.find(u=>u.email==email && u.pass==pass);
+
+if(user){
+localStorage.setItem("currentUser",JSON.stringify(user));
+
+if(document.getElementById("saveLogin").checked){
+localStorage.setItem("stay","1");
+}
+
+document.getElementById("loginInfo").innerHTML="Eingeloggt als "+user.name;
+showTab("home");
+}else{
+document.getElementById("loginInfo").innerHTML="Falsche Daten";
+}
+}
+
+function savePlace(){
+let obj={
+name:document.getElementById("ort").value,
+land:document.getElementById("land").value,
+bundesland:document.getElementById("bundesland").value,
+stadt:document.getElementById("stadt").value,
+typ:document.getElementById("typ").value,
+lat:document.getElementById("lat").value,
+lng:document.getElementById("lng").value,
+text:document.getElementById("text").value
+};
+
+places.push(obj);
+localStorage.setItem("places",JSON.stringify(places));
+alert("Gespeichert");
+loadPlaces();
+}
+
+function loadPlaces(){
+let s=document.getElementById("search").value.toLowerCase();
+let html="";
+
+places
+.filter(p=>p.name.toLowerCase().includes(s))
+.forEach(p=>{
+html+=`
+<div class="place">
+<b>${p.name}</b><br>
+${p.land} - ${p.bundesland} - ${p.stadt}<br>
+${p.typ}<br>
+${p.lat}, ${p.lng}<br>
+${p.text}
+</div>
+`;
+});
+
+document.getElementById("list").innerHTML=html;
+}
+
+loadPlaces();
+</script>
+
+</body>
+</html>
