@@ -1,0 +1,311 @@
+<!DOCTYPE html><html lang="de"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HausRadar V6</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+body{margin:0;background:#0b0f10;color:#fff;font-family:Arial}header{padding:18px;text-align:center;background:#111827;font-size:30px;font-weight:900}nav{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:10px;background:#1f2937;position:sticky;top:0;z-index:5}nav button{border:0;border-radius:12px;padding:12px;background:#374151;color:#fff;font-weight:700}section{display:none;padding:14px}section.active{display:block}.card{background:#111827;border:1px solid #263241;border-radius:18px;padding:15px;margin-bottom:14px}input,select,textarea{width:100%;box-sizing:border-box;margin-top:8px;padding:13px;border-radius:12px;border:1px solid #374151;background:#1f2937;color:#fff;font-size:16px}textarea{min-height:90px}button.main{width:100%;margin-top:10px;padding:14px;border:0;border-radius:12px;background:#10b981;color:#fff;font-weight:900;font-size:16px}.small{color:#9ca3af;font-size:13px}.place{background:#1f2937;border-radius:16px;padding:14px;margin-top:12px}.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#2563eb;margin:4px;font-size:12px}.red{background:#dc2626}.green{background:#16a34a}.orange{background:#f59e0b;color:#111}#map{height:360px;border-radius:16px;overflow:hidden}.photos{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.photos img{width:100%;height:120px;object-fit:cover;border-radius:12px}.topLogo{font-size:54px;text-align:center;margin-top:18px}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.hide{display:none}
+</style></head><body>
+
+<header>🏚️ HausRadar V6</header>
+<nav>
+<button onclick="show('home')">Home</button>
+<button onclick="show('lost')">Lost</button>
+<button onclick="show('add')">Neu</button>
+<button onclick="show('mapsec')">Map</button>
+<button onclick="show('profile')">Profil</button>
+</nav>
+
+<section id="home" class="active">
+<div class="topLogo">🏚️</div>
+<div class="card"><h2>Willkommen</h2><div id="homeInfo" class="small">Bitte anmelden oder registrieren.</div></div>
+<div class="card">
+<h3>Schnellzugriff</h3>
+<button class="main" onclick="show('auth')">Login / Registrierung</button>
+<button class="main" onclick="show('lost')">Lost Places ansehen</button>
+</div>
+</section>
+
+<section id="auth">
+<div class="card">
+<h2>Anmelden</h2>
+<input id="email" type="email" placeholder="E-Mail">
+<input id="password" type="password" placeholder="Passwort">
+<input id="username" placeholder="Benutzername">
+<input id="code" placeholder="Einladungscode optional">
+<label class="small"><input id="remember" type="checkbox" checked> Angemeldet bleiben</label>
+<button class="main" onclick="register()">Registrieren</button>
+<button class="main" onclick="login()">Login</button>
+<div id="authMsg" class="small"></div>
+</div>
+</section>
+
+<section id="lost">
+<div class="card">
+<h2>Lost Places</h2>
+<input id="q" placeholder="Name suchen..." oninput="loadPlaces()">
+<div class="row">
+<select id="fLand" onchange="loadPlaces()"><option>Deutschland</option></select>
+<select id="fBund" onchange="loadPlaces()">
+<option>Alle Bundesländer</option><option>Nordrhein-Westfalen</option><option>Berlin</option><option>Bayern</option><option>Hessen</option><option>Niedersachsen</option><option>Sachsen</option><option>Hamburg</option>
+</select>
+</div>
+<input id="fCity" placeholder="Stadt" oninput="loadPlaces()">
+<div class="row">
+<select id="fType" onchange="loadPlaces()"><option>Alle Kategorien</option><option>Haus</option><option>Gebäude</option><option>Fabrik</option></select>
+<select id="fVeg" onchange="loadPlaces()"><option>Vegetation egal</option><option>starke Vegetation</option></select>
+</div>
+<div class="row">
+<select id="fRoof" onchange="loadPlaces()"><option>Dach egal</option><option>kaputtes Dach</option></select>
+<select id="fWin" onchange="loadPlaces()"><option>Fenster egal</option><option>kaputte Fenster</option></select>
+</div>
+<button class="main" onclick="getGPS()">Standort erlauben / aktualisieren</button>
+<div id="gpsInfo" class="small"></div>
+</div>
+<div id="list"></div>
+</section>
+
+<section id="add">
+<div class="card">
+<h2>Neuen Ort einreichen</h2>
+<input id="pName" placeholder="Ortsname *">
+<div class="row">
+<select id="pLand"><option>Deutschland</option></select>
+<select id="pBund"><option>Nordrhein-Westfalen</option><option>Berlin</option><option>Bayern</option><option>Hessen</option><option>Niedersachsen</option><option>Sachsen</option><option>Hamburg</option></select>
+</div>
+<input id="pCity" placeholder="Stadt">
+<div class="row">
+<select id="pType"><option>Haus</option><option>Gebäude</option><option>Fabrik</option></select>
+<select id="pVeg"><option>egal</option><option>starke Vegetation</option></select>
+</div>
+<div class="row">
+<select id="pRoof"><option>Dach egal</option><option>kaputtes Dach</option></select>
+<select id="pWin"><option>Fenster egal</option><option>kaputte Fenster</option></select>
+</div>
+<textarea id="pText" placeholder="Beschreibung"></textarea>
+<div class="row">
+<input id="pLat" placeholder="Latitude *">
+<input id="pLng" placeholder="Longitude *">
+</div>
+<input id="pFotos" type="file" accept="image/*" multiple>
+<button class="main" onclick="useGPSForPlace()">Standort übernehmen</button>
+<button class="main" onclick="savePlace()">Ort einreichen</button>
+<div id="addMsg" class="small"></div>
+</div>
+</section>
+
+<section id="mapsec">
+<div class="card"><h2>Map</h2><div id="map"></div></div>
+</section>
+
+<section id="profile">
+<div class="card">
+<h2>Profil</h2>
+<div id="prof" class="small">Nicht angemeldet.</div>
+<button class="main" onclick="logout()">Abmelden</button>
+</div>
+<div id="adminBox" class="card hide">
+<h2>Adminbereich</h2>
+<div id="users" class="small"></div>
+</div>
+</section>
+
+<script>
+const SUPABASE_URL="https://qvurspabnycapkdqghcz.supabase.co";
+const SUPABASE_KEY="sb_publishable_qxi95bPYaRUrBuBjE8iD2A_gE3SVe2C";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+const PREMIUM="Lost2103", ADMIN="Lost0103", SUPER="Anjajoel2303";
+let me=null, profile=null, gps=null, map=null, markers=[];
+
+function show(id){
+document.querySelectorAll("section").forEach(x=>x.classList.remove("active"));
+document.getElementById(id).classList.add("active");
+if(id==="lost")loadPlaces();
+if(id==="mapsec")initMap();
+if(id==="profile"){renderProfile();loadUsers();}
+}
+
+function dist(a,b,c,d){
+let R=6371,x=(c-a)*Math.PI/180,y=(d-b)*Math.PI/180;
+let A=Math.sin(x/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(y/2)**2;
+return R*2*Math.atan2(Math.sqrt(A),Math.sqrt(1-A));
+}
+
+async function register(){
+let email=document.getElementById("email").value.trim(),password=document.getElementById("password").value;
+let username=document.getElementById("username").value.trim()||"User",code=document.getElementById("code").value.trim();
+let {data,error}=await sb.auth.signUp({email,password,options:{data:{display_name:username}}});
+if(error)return authMsg.innerText=error.message;
+if(data.user)await makeProfile(data.user,code,username);
+authMsg.innerText="Registriert. Jetzt einloggen.";
+}
+
+async function login(){
+localStorage.setItem("stay",remember.checked?"1":"0");
+let email=document.getElementById("email").value.trim(),password=document.getElementById("password").value,code=document.getElementById("code").value.trim();
+let {data,error}=await sb.auth.signInWithPassword({email,password});
+if(error)return authMsg.innerText=error.message;
+me=data.user;await makeProfile(me,code);await loadProfile();show("home");
+}
+
+async function makeProfile(user,code,name){
+let {data:p}=await sb.from("profiles").select("*").eq("id",user.id).maybeSingle();
+let role="user",premium_plan="free";
+if(code===PREMIUM)premium_plan="premium";
+if(code===ADMIN)role="admin";
+if(code===SUPER){role="superadmin";premium_plan="premium";}
+let username=name||user.user_metadata?.display_name||user.email;
+if(!p){
+await sb.from("profiles").insert({id:user.id,username,role,premium_plan});
+}else{
+let up={};
+if(code===PREMIUM)up.premium_plan="premium";
+if(code===ADMIN)up.role="admin";
+if(code===SUPER){up.role="superadmin";up.premium_plan="premium";}
+if(Object.keys(up).length)await sb.from("profiles").update(up).eq("id",user.id);
+}
+}
+
+async function loadProfile(){
+let {data}=await sb.from("profiles").select("*").eq("id",me.id).maybeSingle();
+profile=data||{};
+homeInfo.innerHTML="Eingeloggt als "+(profile.username||me.email)+" · "+(profile.role||"user")+" · "+(profile.premium_plan||"free");
+}
+
+async function logout(){await sb.auth.signOut();me=null;profile=null;localStorage.setItem("stay","0");location.reload();}
+
+function getGPS(){
+navigator.geolocation.getCurrentPosition(p=>{
+gps={lat:p.coords.latitude,lng:p.coords.longitude};
+localStorage.setItem("gpsOK","1");
+gpsInfo.innerText="Standort aktiv. Orte werden nach Entfernung sortiert.";
+loadPlaces();initMap();
+},()=>gpsInfo.innerText="Standort nicht erlaubt.");
+}
+
+function useGPSForPlace(){
+navigator.geolocation.getCurrentPosition(p=>{
+pLat.value=p.coords.latitude.toFixed(6);pLng.value=p.coords.longitude.toFixed(6);
+});
+}
+
+async function savePlace(){
+if(!me)return addMsg.innerText="Bitte zuerst anmelden.";
+let title=pName.value.trim(),lat=Number(pLat.value),lng=Number(pLng.value);
+if(!title||isNaN(lat)||isNaN(lng))return addMsg.innerText="Name und Koordinaten sind Pflicht.";
+let {data,error}=await sb.from("places").insert({
+user_id:me.id,title,country:pLand.value,state:pBund.value,city:pCity.value,type:pType.value,
+vegetation:pVeg.value,roof_damage:pRoof.value==="kaputtes Dach",window_damage:pWin.value==="kaputte Fenster",
+description:pText.value,lat,lng
+}).select().single();
+if(error)return addMsg.innerText=error.message;
+
+for(let file of pFotos.files){
+let path=me.id+"/"+data.id+"/"+Date.now()+"_"+file.name;
+let up=await sb.storage.from("place-photos").upload(path,file);
+if(!up.error){
+let url=sb.storage.from("place-photos").getPublicUrl(path).data.publicUrl;
+await sb.from("photos").insert({place_id:data.id,user_id:me.id,image_url:url});
+}}
+addMsg.innerText="Ort eingereicht.";
+pName.value=pCity.value=pText.value=pLat.value=pLng.value="";pFotos.value="";
+loadPlaces();initMap();
+}
+
+async function loadPlaces(){
+if(!me){list.innerHTML='<div class="card">Bitte anmelden.</div>';return;}
+let {data,error}=await sb.from("places").select("*").order("created_at",{ascending:false});
+if(error){list.innerHTML='<div class="card">'+error.message+'</div>';return;}
+let ids=(data||[]).map(x=>x.id);
+let photos=ids.length?(await sb.from("photos").select("*").in("place_id",ids)).data||[]:[];
+let comments=ids.length?(await sb.from("comments").select("*").in("place_id",ids)).data||[]:[];
+
+let q=document.getElementById("q").value.toLowerCase(),city=fCity.value.toLowerCase();
+let arr=(data||[]).filter(p=>{
+return (!q||(p.title||"").toLowerCase().includes(q)) &&
+(fBund.value==="Alle Bundesländer"||p.state===fBund.value) &&
+(!city||(p.city||"").toLowerCase().includes(city)) &&
+(fType.value==="Alle Kategorien"||p.type===fType.value) &&
+(fVeg.value==="Vegetation egal"||p.vegetation===fVeg.value) &&
+(fRoof.value==="Dach egal"||p.roof_damage) &&
+(fWin.value==="Fenster egal"||p.window_damage);
+});
+if(gps)arr=arr.map(p=>({...p,km:dist(gps.lat,gps.lng,p.lat,p.lng)})).sort((a,b)=>a.km-b.km);
+
+list.innerHTML=arr.map(p=>{
+let ph=photos.filter(x=>x.place_id===p.id),co=comments.filter(x=>x.place_id===p.id);
+return `<div class="place">
+<h2>${p.title}</h2>
+<div class="small">${p.city||""}, ${p.state||""}</div>
+<div class="small">${gps&&p.km?Math.round(p.km*10)/10+" km entfernt":"Entfernung nach GPS-Freigabe"}</div>
+<span class="badge">${p.type||"Ort"}</span>
+${p.vegetation==="starke Vegetation"?'<span class="badge green">starke Vegetation</span>':""}
+${p.roof_damage?'<span class="badge red">kaputtes Dach</span>':""}
+${p.window_damage?'<span class="badge orange">kaputte Fenster</span>':""}
+<p>${p.description||""}</p>
+<div class="small">Koordinaten: ${p.lat}, ${p.lng}</div>
+<button class="main" onclick="openMap(${p.lat},${p.lng},'${String(p.title).replaceAll("'","")}')">Auf Map zeigen</button>
+<h3>Bilder</h3>
+<input id="foto_${p.id}" type="file" accept="image/*" multiple>
+<button class="main" onclick="uploadMore(${p.id})">Bilder hochladen</button>
+<div class="photos">${ph.map(x=>`<img src="${x.image_url}">`).join("")}</div>
+<h3>Kommentare</h3>
+<textarea id="kom_${p.id}" placeholder="Kommentar schreiben"></textarea>
+<button class="main" onclick="comment(${p.id})">Kommentar speichern</button>
+${co.map(c=>`<div class="card small">${c.text}</div>`).join("")}
+</div>`}).join("")||'<div class="card">Keine Orte gefunden.</div>';
+}
+
+async function uploadMore(id){
+for(let file of document.getElementById("foto_"+id).files){
+let path=me.id+"/"+id+"/"+Date.now()+"_"+file.name;
+let up=await sb.storage.from("place-photos").upload(path,file);
+if(!up.error){
+let url=sb.storage.from("place-photos").getPublicUrl(path).data.publicUrl;
+await sb.from("photos").insert({place_id:id,user_id:me.id,image_url:url});
+}}
+loadPlaces();
+}
+
+async function comment(id){
+let text=document.getElementById("kom_"+id).value.trim();if(!text)return;
+let {error}=await sb.from("comments").insert({place_id:id,user_id:me.id,text});
+if(error)return alert(error.message);
+loadPlaces();
+}
+
+function initMap(){
+if(!map){map=L.map("map").setView([51.1657,10.4515],6);L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19}).addTo(map);}
+setTimeout(()=>map.invalidateSize(),200);loadMap();
+}
+
+async function loadMap(){
+if(!map)return;
+markers.forEach(m=>map.removeLayer(m));markers=[];
+let {data}=await sb.from("places").select("*");
+(data||[]).forEach(p=>markers.push(L.marker([p.lat,p.lng]).addTo(map).bindPopup("<b>"+p.title+"</b><br>"+(p.city||""))));
+}
+
+function openMap(lat,lng,title){show("mapsec");setTimeout(()=>{map.setView([lat,lng],15);L.popup().setLatLng([lat,lng]).setContent(title).openOn(map)},300);}
+
+function renderProfile(){
+if(!me){prof.innerText="Nicht angemeldet.";return;}
+prof.innerText="Name: "+(profile.username||"")+" · Rolle: "+(profile.role||"user")+" · Plan: "+(profile.premium_plan||"free");
+adminBox.classList.toggle("hide",!(profile.role==="admin"||profile.role==="superadmin"));
+}
+
+async function loadUsers(){
+if(!(profile?.role==="admin"||profile?.role==="superadmin"))return;
+let {data}=await sb.from("profiles").select("*");
+users.innerHTML=(data||[]).map(u=>`<div class="place"><b>${u.username}</b><br>${u.role} · ${u.premium_plan}</div>`).join("");
+}
+
+(async()=>{
+let {data:{session}}=await sb.auth.getSession();
+if(session?.user&&localStorage.getItem("stay")!=="0"){me=session.user;await loadProfile();if(localStorage.getItem("gpsOK")==="1")getGPS();show("home");}
+else show("auth");
+})();
+</script>
+</body></html>
