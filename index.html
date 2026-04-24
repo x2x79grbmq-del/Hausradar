@@ -914,3 +914,76 @@ routeList.innerHTML=fav.map((p,i)=>`
 }
 
 function initMap(){
+  if(!map){
+map=L.map("map").setView([51.1657,10.4515],6);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19}).addTo(map);
+}
+setTimeout(()=>map.invalidateSize(),200);
+loadMap();
+}
+
+async function loadMap(){
+if(!map)return;
+markers.forEach(m=>map.removeLayer(m));
+markers=[];
+
+let r=await sb.from("places").select("*");
+
+(r.data||[]).forEach(p=>{
+let mk=L.marker([p.lat,p.lng]).addTo(map)
+.bindPopup("<b>"+p.title+"</b><br>"+(p.city||""));
+markers.push(mk);
+});
+}
+
+function openMap(lat,lng,title){
+show("mapsec");
+setTimeout(()=>{
+if(!map)initMap();
+map.setView([lat,lng],15);
+L.popup().setLatLng([lat,lng]).setContent("<b>"+title+"</b>").openOn(map);
+},300);
+}
+
+function renderProfile(){
+if(!me){
+prof.textContent="Nicht angemeldet";
+return;
+}
+prof.textContent="Name: "+(profile.username||"")+" | Rolle: "+(profile.role||"user")+" | Plan: "+(profile.premium_plan||"free");
+
+adminBox.classList.toggle("hidden",!(profile.role==="admin"||profile.role==="superadmin"));
+}
+
+async function loadUsers(){
+if(!(profile?.role==="admin"||profile?.role==="superadmin"))return;
+
+let r=await sb.from("profiles").select("*");
+
+users.innerHTML=(r.data||[]).map(u=>`
+<div class="card small">
+<b>${u.username||"User"}</b><br>
+${u.email||""}<br>
+${u.role||"user"} · ${u.premium_plan||"free"}
+</div>`).join("");
+}
+
+(async()=>{
+let s=await sb.auth.getSession();
+let session=s.data.session;
+
+if(session?.user && localStorage.getItem("stay")!=="0"){
+me=session.user;
+await makeProfile(me,"");
+await loadProfile();
+
+if(localStorage.getItem("gpsOK")==="1")getGPS();
+
+show("home");
+}else{
+show("auth");
+}
+})();
+</script>
+</body>
+</html>
