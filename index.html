@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#080b0c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HausRadar">
+<title>HausRadar V7</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+:root{--bg:#080b0c;--card:#111819;--card2:#182123;--line:#273330;--text:#f5f7f6;--muted:#95a29d;--green:#98ff2f;--blue:#70abff;--red:#ff6b61;--amber:#ffbf36}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:radial-gradient(circle at top left,rgba(152,255,47,.12),transparent 28%),linear-gradient(180deg,#0d1213,#080b0c);color:var(--text);font-family:Arial,Helvetica,sans-serif}
+.app{max-width:430px;margin:auto;min-height:100vh;padding-bottom:96px}
+.top{padding:calc(env(safe-area-inset-top) + 10px) 18px 8px;display:flex;justify-content:space-between;color:var(--muted);font-size:12px}
+.screen{display:none;padding:12px 16px}.screen.active{display:block}
+.logo{width:104px;height:104px;border-radius:30px;object-fit:cover;border:1px solid #344430;box-shadow:0 20px 44px #0008}
+.hero{text-align:center;padding-top:14px}.title{font-size:36px;font-weight:900;margin:12px 0 6px}.sub{color:var(--muted);font-size:14px;line-height:1.5}
+.card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:22px;padding:16px;margin:12px 0;box-shadow:0 10px 30px #0004}
+.row{display:flex;align-items:center;gap:10px}.space{justify-content:space-between}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{display:block;text-decoration:none;color:#fff;background:#12191b;border:1px solid #26322f;border-radius:18px;padding:14px;min-height:105px}.tile i{display:flex;width:42px;height:42px;border-radius:15px;background:rgba(152,255,47,.13);align-items:center;justify-content:center;font-style:normal;font-size:22px;margin-bottom:10px}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input,select,textarea{width:100%;padding:13px;margin-top:8px;border-radius:14px;border:1px solid #36403d;background:#0f1415;color:#fff;font-size:15px}
+textarea{min-height:90px}
+button{width:100%;padding:14px;margin-top:10px;border:0;border-radius:15px;background:var(--green);color:#10140d;font-weight:900;font-size:15px}
+.dark{background:#1a2022;color:#fff;border:1px solid var(--line)}
+.small{font-size:12px;color:var(--muted)}
+.badge,.score{display:inline-block;padding:7px 10px;border-radius:999px;font-size:12px;margin:4px 5px 0 0;border:1px solid #333;background:#1a2022}
+.green{background:rgba(152,255,47,.13);border-color:#496a20;color:#e1ffc2}.blue{background:rgba(112,171,255,.13);border-color:#345f95;color:#dbe9ff}.red{background:rgba(255,107,97,.13);border-color:#6d2a24;color:#ffc4bd}.amber{background:rgba(255,191,54,.13);border-color:#6f5917;color:#ffe2a6}
+.place{background:#12181a;border:1px solid #27312e;border-radius:20px;padding:14px;margin-top:12px}
+.photos{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.photos img{width:100%;height:125px;object-fit:cover;border-radius:14px;border:1px solid #303938}
+#map{height:330px;border-radius:18px;overflow:hidden;border:1px solid #303938}
+.nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(430px,100%);display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#080b0c11,#080b0c 35%);backdrop-filter:blur(12px)}
+.nav a{flex:1;text-align:center;text-decoration:none;color:var(--muted);font-size:11px}.nav b{display:flex;width:42px;height:42px;margin:auto auto 4px;border-radius:15px;background:#1a2022;border:1px solid var(--line);align-items:center;justify-content:center;font-size:19px}.nav a.active{color:#efffde}.nav a.active b{background:rgba(152,255,47,.13);border-color:#496a20}
+.hide{display:none!important}
+hr{border:0;border-top:1px solid #27312e;margin:13px 0}
+</style>
+</head>
+
+<body>
+<div class="app">
+<div class="top"><span id="clock">00:00</span><span>HausRadar</span></div>
+
+<section id="splash" class="screen active">
+<div class="hero">
+<img id="logo1" class="logo">
+<div class="title">HausRadar V7</div>
+<div class="sub">Lost Places finden, einreichen, kommentieren und nach Entfernung anzeigen.</div>
+</div>
+<div class="card">
+<span class="badge green">📡 Radar V7</span>
+<span class="badge blue">📍 GPS</span>
+<span class="badge amber">📸 Fotos</span>
+<span class="badge red">🗺️ Map</span>
+</div>
+<div class="card">
+<strong>🍎 iPhone App-Modus</strong>
+<div class="small" style="margin-top:6px">In Safari öffnen → Teilen → Zum Home-Bildschirm. Danach startet HausRadar wie eine App.</div>
+</div>
+<button onclick="show('auth')">Loslegen</button>
+</section>
+
+<section id="auth" class="screen">
+<div class="hero">
+<img id="logo2" class="logo" style="width:82px;height:82px">
+<div class="title" style="font-size:28px">Anmelden</div>
+<div class="sub">Erstelle ein Konto oder melde dich an.</div>
+</div>
+<div class="card">
+<input id="email" type="email" placeholder="E-Mail">
+<input id="password" type="password" placeholder="Passwort">
+<input id="username" placeholder="Name">
+<input id="code" placeholder="Einladungscode optional">
+<label class="small"><input id="remember" type="checkbox" checked> Angemeldet bleiben</label>
+<button onclick="register()">Registrieren</button>
+<button class="dark" onclick="login()">Einloggen</button>
+<div id="authMsg" class="small" style="margin-top:10px"></div>
+</div>
+</section>
+<section id="home" class="screen">
+<div class="card">
+<div class="row space">
+<div class="row">
+<img id="logo3" style="width:56px;height:56px;border-radius:18px;object-fit:cover;border:1px solid #344430">
+<div>
+<h2 style="margin:0">Dashboard</h2>
+<div id="homeInfo" class="small">Willkommen</div>
+</div>
+</div>
+<span id="planBadge" class="score green">free</span>
+</div>
+<div style="margin-top:10px">
+<span id="roleBadge" class="badge green">👤 user</span>
+<span id="gpsBadge" class="badge blue">📍 Region</span>
+</div>
+</div>
+
+<div class="quick">
+<a class="tile" href="#" onclick="show('lost');return false">
+<i>🏚️</i>
+<strong>Lost Places</strong>
+<span class="small">Suche & Entfernung</span>
+</a>
+
+<a class="tile" href="#" onclick="show('add');return false">
+<i>➕</i>
+<strong>Ort hinzufügen</strong>
+<span class="small">Koordinaten Pflicht</span>
+</a>
+
+<a class="tile" href="#" onclick="show('mapsec');return false">
+<i>🗺️</i>
+<strong>Map</strong>
+<span class="small">Marker ansehen</span>
+</a>
+
+<a class="tile" href="#" onclick="show('profile');return false">
+<i>👤</i>
+<strong>Profil</strong>
+<span class="small">Konto & Rechte</span>
+</a>
+</div>
+</section>
+
+<section id="lost" class="screen">
+<div class="card">
+<h2 style="margin:0">🏚️ Lost Places</h2>
+<div class="small">Nächste Orte zuerst, sobald Standort aktiv ist.</div>
+
+<input id="q" placeholder="Name vom Haus, Gebäude oder Ort" oninput="loadPlaces()">
+
+<div class="grid">
+<select id="fBund" onchange="loadPlaces()">
+<option>Alle Bundesländer</option>
+<option>Nordrhein-Westfalen</option>
+<option>Berlin</option>
+<option>Bayern</option>
+<option>Hessen</option>
+<option>Niedersachsen</option>
+<option>Sachsen</option>
+<option>Hamburg</option>
+</select>
+
+<input id="fCity" placeholder="Stadt" oninput="loadPlaces()">
+</div>
+
+<div class="grid">
+<select id="fType" onchange="loadPlaces()">
+<option>Alle Kategorien</option>
+<option>Haus</option>
+<option>Gebäude</option>
+<option>Fabrik</option>
+</select>
+
+<select id="fVeg" onchange="loadPlaces()">
+<option>Vegetation egal</option>
+<option>starke Vegetation</option>
+</select>
+</div>
+
+<div class="grid">
+<select id="fRoof" onchange="loadPlaces()">
+<option>Dach egal</option>
+<option>kaputtes Dach</option>
+</select>
+
+<select id="fWin" onchange="loadPlaces()">
+<option>Fenster egal</option>
+<option>kaputte Fenster</option>
+</select>
+</div>
+
+<button class="dark" onclick="getGPS()">📍 Standort aktualisieren</button>
+<div id="gpsInfo" class="small" style="margin-top:10px"></div>
+</div>
+
+<div id="list"></div>
+</section>
+
+<section id="add" class="screen">
+<div class="card">
+<h2 style="margin:0">➕ Neuen Ort einreichen</h2>
+<div class="small">Ortsname und Koordinaten sind Pflicht.</div>
+
+<input id="pName" placeholder="Ortsname *">
+
+<div class="grid">
+<select id="pBund">
+<option>Nordrhein-Westfalen</option>
+<option>Berlin</option>
+<option>Bayern</option>
+<option>Hessen</option>
+<option>Niedersachsen</option>
+<option>Sachsen</option>
+<option>Hamburg</option>
+</select>
+
+<input id="pCity" placeholder="Stadt">
+</div>
+
+<div class="grid">
+<select id="pType">
+<option>Haus</option>
+<option>Gebäude</option>
+<option>Fabrik</option>
+</select>
+
+<select id="pVeg">
+<option>egal</option>
+<option>starke Vegetation</option>
+</select>
+</div>
+<div class="grid">
+<select id="pRoof">
+<option>Dach egal</option>
+<option>kaputtes Dach</option>
+</select>
+
+<select id="pWin">
+<option>Fenster egal</option>
+<option>kaputte Fenster</option>
+</select>
+</div>
+
+<textarea id="pText" placeholder="Beschreibung"></textarea>
+
+<div class="grid">
+<input id="pLat" placeholder="Latitude *">
+<input id="pLng" placeholder="Longitude *">
+</div>
+
+<input id="pFotos" type="file" accept="image/*" capture="environment" multiple>
+
+<button class="dark" onclick="useGPSForPlace()">📍 Standort übernehmen</button>
+<button onclick="savePlace()">Ort einreichen</button>
+
+<div id="addMsg" class="small" style="margin-top:10px"></div>
+</div>
+</section>
+
+<section id="mapsec" class="screen">
+<div class="card">
+<h2 style="margin:0 0 8px">🗺️ Map</h2>
+<div id="map"></div>
+</div>
+</section>
+
+<section id="profile" class="screen">
+<div class="card">
+<h2 style="margin:0">👤 Profil</h2>
+<div id="prof" class="small" style="margin-top:8px">Nicht angemeldet.</div>
+<button class="dark" onclick="logout()">Abmelden</button>
+</div>
+
+<div id="adminBox" class="card hide">
+<h2>🛡️ Verwaltung</h2>
+<div id="users" class="small"></div>
+</div>
+</section>
+</div>
+
+<div id="nav" class="nav hide">
+<a class="active" data-target="home" href="#" onclick="show('home');return false">
+<b>⌂</b>Home
+</a>
+
+<a data-target="lost" href="#" onclick="show('lost');return false">
+<b>🏚️</b>Lost
+</a>
+
+<a data-target="add" href="#" onclick="show('add');return false">
+<b>＋</b>Neu
+</a>
+
+<a data-target="mapsec" href="#" onclick="show('mapsec');return false">
+<b>🗺️</b>Map
+</a>
+
+<a data-target="profile" href="#" onclick="show('profile');return false">
+<b>👤</b>Profil
+</a>
+</div>
+
+<script>
+const LOGO="data:image/webp;base64,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";
+logo1.src=LOGO;
+logo2.src=LOGO;
+logo3.src=LOGO;
+const SUPABASE_URL="https://qvurspabnycapkdqghcz.supabase.co";
+const SUPABASE_KEY="sb_publishable_qxi95bPYaRUrBuBjE8iD2A_gE3SVe2C";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+const PREMIUM="Lost2103";
+const ADMIN="Lost0103";
+const SUPER="Anjajoel2303";
+
+let me=null;
+let profile=null;
+let gps=null;
+let map=null;
+let markers=[];
+
+function deError(t){
+if(!t)return "";
+t=String(t);
+if(t.includes("For security purposes"))return "Bitte kurz warten. Aus Sicherheitsgründen ist diese Anfrage erst gleich wieder möglich.";
+if(t.includes("Invalid login credentials"))return "E-Mail oder Passwort ist falsch.";
+if(t.includes("User already registered"))return "Diese E-Mail ist bereits registriert.";
+if(t.includes("Email not confirmed"))return "Bitte bestätige zuerst deine E-Mail.";
+if(t.includes("Password should be"))return "Das Passwort ist zu kurz.";
+return t;
+}
+
+function tick(){
+clock.textContent=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+}
+tick();
+setInterval(tick,30000);
+
+function show(id){
+document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+document.getElementById(id).classList.add("active");
+
+document.querySelectorAll(".nav a").forEach(a=>a.classList.remove("active"));
+let a=document.querySelector('.nav a[data-target="'+id+'"]');
+if(a)a.classList.add("active");
+
+if(id==="lost")loadPlaces();
+if(id==="mapsec")initMap();
+if(id==="profile"){
+renderProfile();
+loadUsers();
+}
+
+scrollTo({top:0,behavior:"smooth"});
+}
+
+function dist(a,b,c,d){
+let R=6371;
+let x=(c-a)*Math.PI/180;
+let y=(d-b)*Math.PI/180;
+let A=Math.sin(x/2)**2+
+Math.cos(a*Math.PI/180)*
+Math.cos(c*Math.PI/180)*
+Math.sin(y/2)**2;
+return R*2*Math.atan2(Math.sqrt(A),Math.sqrt(1-A));
+}
+
+async function register(){
+let emailValue=email.value.trim();
+let passwordValue=password.value;
+let usernameValue=username.value.trim()||"User";
+let codeValue=code.value.trim();
+
+let r=await sb.auth.signUp({
+email:emailValue,
+password:passwordValue,
+options:{data:{display_name:usernameValue}}
+});
+
+if(r.error){
+authMsg.textContent=deError(r.error.message);
+return;
+}
+
+if(r.data.user){
+await makeProfile(r.data.user,codeValue,usernameValue);
+}
+
+authMsg.textContent="Registrierung erfolgreich. Danach einloggen.";
+}
+
+async function login(){
+localStorage.setItem("stay",remember.checked?"1":"0");
+
+let r=await sb.auth.signInWithPassword({
+email:email.value.trim(),
+password:password.value
+});
+
+if(r.error){
+authMsg.textContent=deError(r.error.message);
+return;
+}
+
+me=r.data.user;
+await makeProfile(me,code.value.trim());
+await loadProfile();
+show("home");
+}
+
+async function makeProfile(u,c,n){
+let res=await sb.from("profiles").select("*").eq("id",u.id).maybeSingle();
+let p=res.data;
+
+let role="user";
+let premium_plan="free";
+
+if(c===PREMIUM)premium_plan="premium";
+if(c===ADMIN)role="admin";
+if(c===SUPER){
+role="superadmin";
+premium_plan="premium";
+}
+
+let uname=n||u.user_metadata?.display_name||u.email;
+
+if(!p){
+await sb.from("profiles").insert({
+id:u.id,
+username:uname,
+role:role,
+premium_plan:premium_plan
+});
+}else{
+let up={};
+
+if(c===PREMIUM)up.premium_plan="premium";
+if(c===ADMIN)up.role="admin";
+if(c===SUPER){
+up.role="superadmin";
+up.premium_plan="premium";
+}
+
+if(Object.keys(up).length){
+await sb.from("profiles").update(up).eq("id",u.id);
+}
+}
+}  
+async function loadProfile(){
+let res=await sb.from("profiles").select("*").eq("id",me.id).maybeSingle();
+profile=res.data||{};
+
+homeInfo.textContent=(profile.username||me.email)+" · "+(profile.role||"user");
+planBadge.textContent=profile.premium_plan||"free";
+roleBadge.textContent="👤 "+(profile.role||"user");
+
+nav.classList.remove("hide");
+}
+
+async function logout(){
+await sb.auth.signOut();
+localStorage.setItem("stay","0");
+location.reload();
+}
+
+function getGPS(){
+navigator.geolocation.getCurrentPosition(
+p=>{
+gps={
+lat:p.coords.latitude,
+lng:p.coords.longitude
+};
+
+localStorage.setItem("gpsOK","1");
+gpsBadge.textContent="📍 Standort aktiv";
+gpsInfo.textContent="Standort aktiv. Orte werden nach Entfernung sortiert.";
+
+loadPlaces();
+initMap();
+},
+()=>{
+gpsInfo.textContent="Standort nicht erlaubt.";
+}
+);
+}
+
+function useGPSForPlace(){
+navigator.geolocation.getCurrentPosition(p=>{
+pLat.value=p.coords.latitude.toFixed(6);
+pLng.value=p.coords.longitude.toFixed(6);
+});
+}
+
+async function savePlace(){
+if(!me){
+addMsg.textContent="Bitte zuerst anmelden.";
+return;
+}
+
+let title=pName.value.trim();
+let lat=Number(pLat.value);
+let lng=Number(pLng.value);
+
+if(!title||isNaN(lat)||isNaN(lng)){
+addMsg.textContent="Name und Koordinaten sind Pflicht.";
+return;
+}
+
+let r=await sb.from("places").insert({
+user_id:me.id,
+title:title,
+country:"Deutschland",
+state:pBund.value,
+city:pCity.value,
+type:pType.value,
+vegetation:pVeg.value,
+roof_damage:pRoof.value==="kaputtes Dach",
+window_damage:pWin.value==="kaputte Fenster",
+description:pText.value,
+lat:lat,
+lng:lng
+}).select().single();
+
+if(r.error){
+addMsg.textContent=deError(r.error.message);
+return;
+}
+
+for(let f of pFotos.files){
+let path=me.id+"/"+r.data.id+"/"+Date.now()+"_"+f.name;
+
+let up=await sb.storage.from("place-photos").upload(path,f);
+
+if(!up.error){
+let url=sb.storage.from("place-photos").getPublicUrl(path).data.publicUrl;
+
+await sb.from("photos").insert({
+place_id:r.data.id,
+user_id:me.id,
+image_url:url
+});
+}
+}
+
+addMsg.textContent="Ort eingereicht.";
+
+pName.value="";
+pCity.value="";
+pText.value="";
+pLat.value="";
+pLng.value="";
+pFotos.value="";
+
+loadPlaces();
+initMap();
+}
+
+async function loadPlaces(){
+if(!me){
+list.innerHTML='<div class="card">Bitte anmelden.</div>';
+return;
+}
+
+let r=await sb.from("places").select("*").order("created_at",{ascending:false});
+
+if(r.error){
+list.innerHTML='<div class="card">'+deError(r.error.message)+'</div>';
+return;
+}
+
+let data=r.data||[];
+let ids=data.map(x=>x.id);
+
+let photos=[];
+let comments=[];
+
+if(ids.length){
+let ph=await sb.from("photos").select("*").in("place_id",ids);
+photos=ph.data||[];
+
+let co=await sb.from("comments").select("*").in("place_id",ids);
+comments=co.data||[];
+}
+  let q=document.getElementById("q").value.toLowerCase();
+let city=fCity.value.toLowerCase();
+
+let arr=data.filter(p=>{
+return (!q||(p.title||"").toLowerCase().includes(q)) &&
+(fBund.value==="Alle Bundesländer"||p.state===fBund.value) &&
+(!city||(p.city||"").toLowerCase().includes(city)) &&
+(fType.value==="Alle Kategorien"||p.type===fType.value) &&
+(fVeg.value==="Vegetation egal"||p.vegetation===fVeg.value) &&
+(fRoof.value==="Dach egal"||p.roof_damage) &&
+(fWin.value==="Fenster egal"||p.window_damage);
+});
+
+if(gps){
+arr=arr.map(p=>({
+...p,
+km:dist(gps.lat,gps.lng,p.lat,p.lng)
+})).sort((a,b)=>a.km-b.km);
+}
+
+list.innerHTML=arr.map(p=>{
+let ph=photos.filter(x=>x.place_id===p.id);
+let co=comments.filter(x=>x.place_id===p.id);
+
+return `
+<div class="place">
+<div class="row space">
+<h2 style="margin:0">${p.title}</h2>
+<span class="score">${p.type||"Ort"}</span>
+</div>
+
+<div class="small">${p.city||""} · ${p.state||""}</div>
+
+<div class="small">
+${gps&&p.km?Math.round(p.km*10)/10+" km entfernt":"Entfernung nach GPS-Freigabe"}
+</div>
+
+${p.vegetation==="starke Vegetation"?'<span class="badge green">🌿 starke Vegetation</span>':""}
+${p.roof_damage?'<span class="badge red">🏚️ kaputtes Dach</span>':""}
+${p.window_damage?'<span class="badge amber">🪟 kaputte Fenster</span>':""}
+
+<p class="small">${p.description||""}</p>
+
+<div class="small">Koordinaten: ${p.lat}, ${p.lng}</div>
+
+<button class="dark" onclick="openMap(${p.lat},${p.lng},'${String(p.title).replaceAll("'","")}')">
+🗺️ Auf Map zeigen
+</button>
+
+<hr>
+
+<strong>📸 Bilder</strong>
+
+<input id="foto_${p.id}" type="file" accept="image/*" capture="environment" multiple>
+
+<button onclick="uploadMore(${p.id})">Bilder hochladen</button>
+
+<div class="photos">
+${ph.map(x=>`<img src="${x.image_url}">`).join("")||'<div class="small">Noch keine Bilder.</div>'}
+</div>
+
+<hr>
+
+<strong>💬 Kommentare</strong>
+
+<textarea id="kom_${p.id}" placeholder="Kommentar schreiben"></textarea>
+
+<button class="dark" onclick="comment(${p.id})">Kommentar speichern</button>
+
+${co.map(c=>`<div class="card small">${c.text}</div>`).join("")||'<div class="small">Noch keine Kommentare.</div>'}
+</div>
+`;
+}).join("")||'<div class="card">Keine Orte gefunden.</div>';
+}
+
+async function uploadMore(id){
+let input=document.getElementById("foto_"+id);
+
+for(let f of input.files){
+let path=me.id+"/"+id+"/"+Date.now()+"_"+f.name;
+
+let up=await sb.storage.from("place-photos").upload(path,f);
+
+if(!up.error){
+let url=sb.storage.from("place-photos").getPublicUrl(path).data.publicUrl;
+
+await sb.from("photos").insert({
+place_id:id,
+user_id:me.id,
+image_url:url
+});
+}
+}
+
+loadPlaces();
+}
+
+async function comment(id){
+let t=document.getElementById("kom_"+id).value.trim();
+
+if(!t)return;
+
+let r=await sb.from("comments").insert({
+place_id:id,
+user_id:me.id,
+text:t
+});
+
+if(r.error){
+alert(deError(r.error.message));
+return;
+}
+
+loadPlaces();
+}
+  function initMap(){
+if(!map){
+map=L.map("map").setView([51.1657,10.4515],6);
+
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{
+maxZoom:19
+}).addTo(map);
+}
+
+setTimeout(()=>map.invalidateSize(),200);
+loadMap();
+}
+
+async function loadMap(){
+if(!map)return;
+
+markers.forEach(m=>map.removeLayer(m));
+markers=[];
+
+let r=await sb.from("places").select("*");
+
+(r.data||[]).forEach(p=>{
+let marker=L.marker([p.lat,p.lng])
+.addTo(map)
+.bindPopup("<b>"+p.title+"</b><br>"+(p.city||""));
+
+markers.push(marker);
+});
+}
+
+function openMap(lat,lng,title){
+show("mapsec");
+
+setTimeout(()=>{
+if(!map)initMap();
+
+map.setView([lat,lng],15);
+
+L.popup()
+.setLatLng([lat,lng])
+.setContent("<b>"+title+"</b>")
+.openOn(map);
+},300);
+}
+
+function renderProfile(){
+if(!me){
+prof.textContent="Nicht angemeldet.";
+return;
+}
+
+prof.textContent=
+"Name: "+(profile.username||"")+
+" · Rolle: "+(profile.role||"user")+
+" · Plan: "+(profile.premium_plan||"free");
+
+adminBox.classList.toggle(
+"hide",
+!(profile.role==="admin"||profile.role==="superadmin")
+);
+}
+
+async function loadUsers(){
+if(!(profile?.role==="admin"||profile?.role==="superadmin"))return;
+
+let r=await sb.from("profiles").select("*");
+
+users.innerHTML=(r.data||[]).map(u=>`
+<div class="place">
+<b>${u.username}</b><br>
+${u.role} · ${u.premium_plan}
+</div>
+`).join("");
+}
+
+(async()=>{
+let sessionData=await sb.auth.getSession();
+let session=sessionData.data.session;
+
+if(session?.user&&localStorage.getItem("stay")!=="0"){
+me=session.user;
+await loadProfile();
+
+if(localStorage.getItem("gpsOK")==="1"){
+getGPS();
+}
+
+show("home");
+}else{
+show("auth");
+}
+})();
+</script>
+</body>
+</html>
