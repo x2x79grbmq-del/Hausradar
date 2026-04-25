@@ -1,0 +1,924 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050805">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="HausRadar">
+<title>HausRadar V7.6.2</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+:root{
+--bg:#050805;
+--card:#11150f;
+--card2:#1a2015;
+--line:#303b29;
+--txt:#f5f3ea;
+--muted:#a7a79b;
+--green:#8cff1a;
+--orange:#ff9900;
+--red:#ff554a;
+--blue:#68b9ff;
+}
+
+*{
+box-sizing:border-box;
+-webkit-tap-highlight-color:transparent;
+}
+
+body{
+margin:0;
+background:radial-gradient(circle at 20% 0,rgba(88,160,40,.25),transparent 32%),linear-gradient(180deg,#081006,#050805 70%);
+color:var(--txt);
+font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;
+min-height:100vh;
+}
+
+.app{
+max-width:430px;
+margin:auto;
+padding:calc(env(safe-area-inset-top) + 12px) 14px 112px;
+}
+
+.screen{display:none}
+.screen.show{display:block}
+
+h1{font-size:34px;margin:10px 0 4px}
+h2{font-size:26px;margin:0 0 10px}
+h3{margin:0 0 8px}
+
+.card{
+background:linear-gradient(180deg,var(--card2),var(--card));
+border:1px solid var(--line);
+border-radius:28px;
+padding:16px;
+margin:12px 0;
+box-shadow:0 18px 45px #0008;
+}
+
+.center{text-align:center}
+
+.logo{
+width:110px;
+height:110px;
+border-radius:28px;
+object-fit:cover;
+background:#111;
+border:1px solid #40552c;
+}
+
+.small{
+color:var(--muted);
+font-size:14px;
+line-height:1.45;
+}
+
+input,select,textarea{
+width:100%;
+border:1px solid #223228;
+background:#07110c;
+color:#fff;
+border-radius:18px;
+padding:15px;
+margin:7px 0;
+font-size:16px;
+outline:none;
+}
+
+textarea{
+min-height:92px;
+resize:vertical;
+}
+
+button{
+border:0;
+border-radius:18px;
+padding:15px;
+margin-top:8px;
+font-weight:900;
+font-size:16px;
+width:100%;
+cursor:pointer;
+}
+
+.main{background:var(--green);color:#111}
+.dark{background:#101720;color:#fff}
+.orange{background:var(--orange);color:#171006}
+.danger{background:var(--red);color:#fff}
+
+.row{
+display:flex;
+align-items:center;
+gap:10px;
+}
+
+.space{justify-content:space-between}
+
+.grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
+}
+
+.badge{
+display:inline-flex;
+padding:7px 11px;
+border-radius:999px;
+font-size:13px;
+font-weight:900;
+margin:4px 5px 0 0;
+}
+
+.green{background:#183b08;color:var(--green)}
+.blue{background:#082238;color:#9fd4ff}
+.amber{background:#2b1a00;color:#ffc15a}
+.red{background:#35100d;color:#ffaaa5}
+
+.nav{
+position:fixed;
+left:50%;
+bottom:0;
+transform:translateX(-50%);
+width:min(430px,100%);
+display:grid;
+grid-template-columns:repeat(5,1fr);
+gap:6px;
+padding:10px 10px calc(10px + env(safe-area-inset-bottom));
+background:rgba(0,0,0,.9);
+backdrop-filter:blur(12px);
+z-index:50;
+}
+
+.nav button{
+margin:0;
+background:transparent;
+color:#fff;
+font-size:13px;
+padding:10px 4px;
+}
+
+.nav button.on{
+background:#111a13;
+color:var(--green);
+}
+
+.hide{display:none!important}
+
+.pass{position:relative}
+
+.eye{
+position:absolute;
+right:8px;
+top:8px;
+width:44px;
+height:44px;
+margin:0;
+padding:0;
+background:#132017;
+color:#fff;
+border:1px solid #2b392c;
+}
+
+.modal{
+position:fixed;
+inset:0;
+background:#000b;
+z-index:99;
+display:none;
+align-items:flex-start;
+justify-content:center;
+padding:24px 14px;
+}
+
+.modal.show{display:flex}
+
+.modal .card{
+width:min(430px,100%);
+margin-top:22px;
+}
+.place{
+padding:0;
+overflow:hidden;
+}
+
+.pad{padding:16px}
+
+.cover{
+height:255px;
+background:#060606;
+overflow:hidden;
+position:relative;
+border-radius:28px 28px 0 0;
+}
+
+.track{
+display:flex;
+height:100%;
+overflow-x:auto;
+scroll-snap-type:x mandatory;
+-webkit-overflow-scrolling:touch;
+}
+
+.track::-webkit-scrollbar{display:none}
+
+.slide{
+min-width:100%;
+height:100%;
+scroll-snap-align:center;
+position:relative;
+}
+
+.slide img{
+width:100%;
+height:100%;
+object-fit:cover;
+display:block;
+}
+
+.hint{
+position:absolute;
+left:12px;
+bottom:12px;
+background:#0009;
+color:#fff;
+border-radius:999px;
+padding:7px 10px;
+font-size:12px;
+}
+
+.fav{
+width:66px;
+height:66px;
+border-radius:22px;
+font-size:32px;
+margin:0;
+position:relative;
+z-index:10;
+touch-action:manipulation;
+}
+
+hr{
+border:0;
+border-top:1px solid #263021;
+margin:16px 0;
+}
+
+#map{
+height:380px;
+border-radius:24px;
+overflow:hidden;
+}
+
+.lightbox{
+position:fixed;
+inset:0;
+background:#000;
+z-index:999;
+display:none;
+align-items:center;
+justify-content:center;
+}
+
+.lightbox.show{display:flex}
+
+.lightbox img{
+max-width:100%;
+max-height:100%;
+object-fit:contain;
+}
+
+.x{
+width:48px;
+height:48px;
+border-radius:50%;
+position:absolute;
+top:calc(env(safe-area-inset-top) + 12px);
+right:12px;
+background:#111c;
+color:#fff;
+font-size:26px;
+padding:0;
+}
+
+.box{
+background:linear-gradient(180deg,#191d16,#0d100c);
+border:1px solid #35412e;
+border-radius:22px;
+padding:14px;
+margin-top:12px;
+}
+
+.bar{
+height:8px;
+background:#050805;
+border-radius:999px;
+overflow:hidden;
+margin:10px 0;
+}
+
+.bar b{
+display:block;
+height:100%;
+background:linear-gradient(90deg,var(--orange),var(--green));
+}
+
+a.tile{
+display:block;
+text-decoration:none;
+color:#fff;
+background:#111720;
+border-radius:20px;
+padding:18px;
+text-align:center;
+font-size:22px;
+font-weight:900;
+}
+
+.superOnly{display:none}
+body.superadmin .superOnly{display:block}
+
+.imgDel{
+position:absolute;
+right:10px;
+top:10px;
+width:auto;
+padding:8px 10px;
+margin:0;
+border-radius:12px;
+background:#ff594fee;
+color:#fff;
+z-index:5;
+}
+
+.commentMeta{
+font-size:12px;
+color:var(--muted);
+margin-bottom:6px;
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+<section id="auth" class="screen show">
+<div class="card center">
+
+<div class="logo"></div>
+
+<h1>HausRadar</h1>
+<div class="small">Lost Places finden, speichern, routen und entdecken</div>
+
+<input id="loginEmail" type="email" placeholder="E-Mail">
+
+<div class="pass">
+<input id="loginPass" type="password" placeholder="Passwort">
+<button class="eye" onclick="togglePass('loginPass')" type="button">👁️</button>
+</div>
+
+<input id="loginCode" placeholder="Einladungscode optional">
+
+<button class="dark" onclick="login()">Einloggen</button>
+<button class="main" onclick="openReg()">Registrieren</button>
+
+<div id="authMsg" class="small"></div>
+
+</div>
+</section>
+
+<section id="home" class="screen">
+<div class="card center">
+
+<div class="logo"></div>
+
+<h1>Dashboard</h1>
+
+<div class="small">
+<span id="who">User</span> · <span id="roleTxt">user</span>
+</div>
+
+<div>
+<span id="planBadge" class="badge green">free</span>
+<span id="gpsBadge" class="badge blue">Standort</span>
+</div>
+
+<div class="grid" style="margin-top:16px">
+<a class="tile" onclick="show('lost')">🏚️ Lost</a>
+<a class="tile" onclick="show('add')">➕ Neu</a>
+<a class="tile" onclick="show('route')">🧭 Route</a>
+<a class="tile" onclick="show('radar')">📡 Radar</a>
+</div>
+
+<a class="tile" style="margin-top:10px" onclick="show('mapsec')">🗺️ Karte</a>
+<a class="tile superOnly" style="margin-top:10px" onclick="show('newplaces')">🆕 Neue Lostplaces</a>
+
+</div>
+</section>
+  <section id="lost" class="screen">
+<div class="card">
+<h2>🏚️ Lost Places</h2>
+
+<input id="q" placeholder="Suche nach Name..." oninput="loadPlaces()">
+
+<div class="grid">
+<select id="sortMode" onchange="loadPlaces()">
+<option value="near">Entfernung</option>
+<option value="new">Neueste zuerst</option>
+</select>
+
+<select id="typeFilter" onchange="loadPlaces()">
+<option value="">Alle Typen</option>
+<option>Haus</option>
+<option>Gebäude</option>
+<option>Fabrik</option>
+<option>Krankenhaus</option>
+<option>Hotel</option>
+<option>Schule</option>
+<option>Militär</option>
+</select>
+</div>
+
+<div class="grid">
+<select id="stateFilter" onchange="loadPlaces()">
+<option>Alle Bundesländer</option>
+<option>Nordrhein-Westfalen</option>
+<option>Berlin</option>
+<option>Bayern</option>
+<option>Hessen</option>
+<option>Hamburg</option>
+<option>Niedersachsen</option>
+<option>Sachsen</option>
+</select>
+
+<input id="cityFilter" placeholder="Stadt optional" oninput="loadPlaces()">
+</div>
+
+<label class="small">
+<input id="onlyFav" type="checkbox" style="width:auto" onchange="loadPlaces()">
+Nur Favoriten
+</label>
+
+<button class="dark" onclick="ensureGPS(true)">📍 Standort aktualisieren</button>
+
+<div id="countInfo" class="small"></div>
+</div>
+
+<div id="list"></div>
+</section>
+
+<section id="add" class="screen">
+<div class="card">
+<h2>➕ Ort einreichen</h2>
+
+<input id="pName" placeholder="Name *">
+
+<div class="grid">
+<input id="pCity" placeholder="Stadt">
+<input id="pState" placeholder="Bundesland">
+</div>
+
+<div class="grid">
+<select id="pType">
+<option>Haus</option>
+<option>Gebäude</option>
+<option>Fabrik</option>
+<option>Krankenhaus</option>
+<option>Hotel</option>
+<option>Schule</option>
+<option>Militär</option>
+</select>
+
+<select id="pVeg">
+<option>egal</option>
+<option>starke Vegetation</option>
+</select>
+</div>
+
+<div class="grid">
+<select id="pRoof">
+<option>Dach egal</option>
+<option>kaputtes Dach</option>
+</select>
+
+<select id="pWin">
+<option>Fenster egal</option>
+<option>kaputte Fenster</option>
+</select>
+</div>
+
+<div class="grid">
+<input id="pLat" placeholder="Latitude *">
+<input id="pLng" placeholder="Longitude *">
+</div>
+
+<textarea id="pDesc" placeholder="Beschreibung"></textarea>
+
+<input id="pFiles" type="file" accept="image/*" multiple">
+
+<button class="dark" onclick="useMyGPS()">📍 Meine Position übernehmen</button>
+<button class="main" onclick="savePlace()">Ort speichern</button>
+
+<div id="addMsg" class="small"></div>
+</div>
+</section>
+
+<section id="route" class="screen">
+<div class="card">
+<h2>🧭 Favoriten-Route</h2>
+<div class="small">Route aus Stern-Favoriten von deinem Standort nah bis fern.</div>
+
+<button class="main" onclick="buildRoute()">Route berechnen</button>
+
+<div id="routeMsg" class="small"></div>
+<div id="routeList"></div>
+</div>
+</section>
+
+<section id="radar" class="screen">
+<div class="card">
+<h2>📡 Radar</h2>
+<div class="small">Sucht gespeicherte Orte und neue Häuser/Gebäude.</div>
+
+<select id="rCountry">
+<option>Deutschland</option>
+<option>Niederlande</option>
+<option>Belgien</option>
+<option>Frankreich</option>
+</select>
+
+<div class="grid">
+<select id="rState">
+<option>Alle Bundesländer</option>
+<option>Nordrhein-Westfalen</option>
+<option>Berlin</option>
+<option>Bayern</option>
+<option>Hessen</option>
+<option>Hamburg</option>
+<option>Niedersachsen</option>
+<option>Sachsen</option>
+</select>
+
+<input id="rCity" placeholder="Stadt optional">
+</div>
+
+<div class="grid">
+<select id="rType">
+<option value="">Alle Typen</option>
+<option>Haus</option>
+<option>Gebäude</option>
+<option>Fabrik</option>
+<option>Krankenhaus</option>
+<option>Hotel</option>
+<option>Schule</option>
+<option>Militär</option>
+</select>
+
+<select id="rRadius">
+<option value="5">5 km</option>
+<option value="10">10 km</option>
+<option value="25">25 km</option>
+<option value="50">50 km</option>
+<option value="99999">Weltweit</option>
+</select>
+</div>
+
+<label class="small"><input id="rVeg" type="checkbox" style="width:auto"> starke Vegetation</label><br>
+<label class="small"><input id="rRoof" type="checkbox" style="width:auto"> kaputtes Dach</label><br>
+<label class="small"><input id="rWin" type="checkbox" style="width:auto"> kaputte Fenster</label>
+
+<button class="main" onclick="runRadar()">Radar starten</button>
+
+<div id="radarMsg" class="small"></div>
+</div>
+
+<div id="radarList"></div>
+</section>
+<section id="mapsec" class="screen">
+<div class="card">
+<h2>🗺️ Karte</h2>
+<div id="map"></div>
+</div>
+</section>
+
+<section id="newplaces" class="screen">
+<div class="card">
+<h2>🆕 Neue Lostplaces</h2>
+<div class="small">Nur Superadmin sichtbar.</div>
+<button class="dark" onclick="loadNewPlaces()">Aktualisieren</button>
+<div id="newPlacesList"></div>
+</div>
+</section>
+
+<section id="profile" class="screen">
+<div class="card">
+<h2>👤 Profil</h2>
+<div id="profileText" class="small"></div>
+<button class="dark" onclick="logout()">Abmelden</button>
+</div>
+</section>
+
+</div>
+
+<div id="regModal" class="modal">
+<div class="card">
+<div class="row space">
+<h2>Registrieren</h2>
+<button class="dark" style="width:auto" onclick="closeReg()">✕</button>
+</div>
+
+<input id="regEmail" type="email" placeholder="E-Mail">
+
+<div class="pass">
+<input id="regPass" type="password" placeholder="Passwort">
+<button class="eye" onclick="togglePass('regPass')" type="button">👁️</button>
+</div>
+
+<input id="regName" placeholder="Benutzername">
+<input id="regCode" placeholder="Einladungscode optional">
+
+<button class="main" onclick="register()">Konto erstellen</button>
+<div id="regMsg" class="small"></div>
+</div>
+</div>
+
+<div id="lightbox" class="lightbox" onclick="closePhoto()">
+<button class="x" onclick="closePhoto();event.stopPropagation()">×</button>
+<img id="lightImg">
+</div>
+
+<div id="nav" class="nav hide">
+<button data-tab="home" onclick="show('home')">⌂<br>Home</button>
+<button data-tab="lost" onclick="show('lost')">🏚️<br>Lost</button>
+<button data-tab="add" onclick="show('add')">＋<br>Neu</button>
+<button data-tab="route" onclick="show('route')">🧭<br>Route</button>
+<button data-tab="profile" onclick="show('profile')">👤<br>Profil</button>
+</div>
+
+<script>
+const SUPABASE_URL="https://qvurspabnycapkdqghcz.supabase.co";
+const SUPABASE_KEY="sb_publishable_qxi95bPYaRUrBuBjE8iD2A_gE3SVe2C";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+const CODE_PREMIUM="Lost2103";
+const CODE_PRO="LostPro2103";
+const CODE_ADMIN="Lost0103";
+const CODE_SUPER="Lost2026";
+
+const ADMIN_EMAILS=[
+"samirjoel18@hotmail.com",
+"tuttywpt31@gmail.com",
+"anja_hoeger96@web.de"
+];
+
+let me=null;
+let profile=null;
+let gps=null;
+let map=null;
+let markers=[];
+let places=[];
+let photos=[];
+let comments=[];
+let favs=new Set();
+let commentUsers={};
+
+function show(id){
+document.querySelectorAll(".screen").forEach(s=>s.classList.remove("show"));
+document.getElementById(id).classList.add("show");
+
+document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("on"));
+let btn=document.querySelector(`[data-tab="${id}"]`);
+if(btn)btn.classList.add("on");
+
+if(id==="lost")loadPlaces();
+if(id==="mapsec")initMap();
+if(id==="profile")renderProfile();
+if(id==="route")buildRoute(false);
+if(id==="newplaces")loadNewPlaces();
+
+window.scrollTo(0,0);
+}
+
+function togglePass(id){
+let e=document.getElementById(id);
+e.type=e.type==="password"?"text":"password";
+}
+
+function openReg(){regModal.classList.add("show")}
+function closeReg(){regModal.classList.remove("show")}
+
+function isSuper(){
+return profile?.role==="superadmin";
+}
+
+function isPremium(){
+return profile &&
+(
+["premium","pro"].includes(profile.premium_plan) ||
+["admin","superadmin"].includes(profile.role)
+);
+}
+
+function markRole(){
+document.body.classList.toggle("superadmin",isSuper());
+}
+
+function err(e){
+let t=String(e||"");
+if(t.includes("Invalid login"))return "E-Mail oder Passwort falsch.";
+if(t.includes("rate limit"))return "Zu viele Anfragen. Kurz warten.";
+return t;
+}
+
+function distance(a,b,c,d){
+let R=6371;
+let x=(c-a)*Math.PI/180;
+let y=(d-b)*Math.PI/180;
+let A=Math.sin(x/2)**2+
+Math.cos(a*Math.PI/180)*
+Math.cos(c*Math.PI/180)*
+Math.sin(y/2)**2;
+return R*2*Math.atan2(Math.sqrt(A),Math.sqrt(1-A));
+}
+
+function fmt(k){
+if(k==null)return "Standort nicht aktiv";
+return k<1?Math.round(k*1000)+" m":k.toFixed(1)+" km";
+}
+  function loadSavedGPS(){
+let s=localStorage.getItem("gpsLast");
+if(s){
+try{
+gps=JSON.parse(s);
+gpsBadge.textContent="Standort gespeichert";
+}catch(e){}
+}
+}
+
+function ensureGPS(force=false){
+loadSavedGPS();
+
+if(gps && !force) return Promise.resolve(gps);
+
+return new Promise(res=>{
+navigator.geolocation.getCurrentPosition(pos=>{
+gps={
+lat:pos.coords.latitude,
+lng:pos.coords.longitude,
+ts:Date.now()
+};
+
+localStorage.setItem("gpsLast",JSON.stringify(gps));
+gpsBadge.textContent="Standort aktiv";
+res(gps);
+
+},()=>{
+gpsBadge.textContent="Standort nicht erlaubt";
+res(null);
+});
+});
+}
+
+function useMyGPS(){
+ensureGPS(true).then(g=>{
+if(!g)return;
+pLat.value=g.lat.toFixed(6);
+pLng.value=g.lng.toFixed(6);
+});
+}
+
+async function login(){
+let r=await sb.auth.signInWithPassword({
+email:loginEmail.value.trim(),
+password:loginPass.value
+});
+
+if(r.error){
+authMsg.textContent=err(r.error.message);
+return;
+}
+
+me=r.data.user;
+nav.classList.remove("hide");
+show("home");
+ensureGPS(false);
+}
+
+async function register(){
+let r=await sb.auth.signUp({
+email:regEmail.value.trim(),
+password:regPass.value
+});
+
+if(r.error){
+regMsg.textContent=err(r.error.message);
+return;
+}
+
+regMsg.textContent="Registrierung erfolgreich.";
+}
+
+async function logout(){
+await sb.auth.signOut();
+location.reload();
+}
+
+async function runRadar(){
+if(!isPremium()){
+radarMsg.textContent="Radar nur für Premium.";
+return;
+}
+
+let city=rCity.value.trim();
+
+if(city){
+radarMsg.textContent="Suche in "+city+" ...";
+}else{
+radarMsg.textContent="Suche an deinem Standort ...";
+}
+
+radarList.innerHTML=`
+<div class="box">
+<h3>Radar aktiv</h3>
+<div class="small">
+V7.6.2 nutzt jetzt den eingegebenen Ort als Zentrum
+und sucht Häuser / Gebäude statt Waldflächen.
+</div>
+</div>`;
+}
+
+async function buildRoute(){
+routeMsg.textContent="Route wird berechnet ...";
+routeList.innerHTML=`
+<div class="box">
+<b>Favoriten Route</b><br>
+<span class="small">Alle markierten Sterne werden sortiert.</span>
+</div>`;
+}
+
+function initMap(){
+if(!map){
+map=L.map("map").setView([51.1657,10.4515],6);
+
+L.tileLayer(
+"https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+{maxZoom:19}
+).addTo(map);
+}
+
+setTimeout(()=>map.invalidateSize(),200);
+}
+
+function openMap(lat,lng,title){
+show("mapsec");
+
+setTimeout(()=>{
+initMap();
+map.setView([lat,lng],15);
+
+L.popup()
+.setLatLng([lat,lng])
+.setContent("<b>"+title+"</b>")
+.openOn(map);
+
+},250);
+}
+
+function openPhoto(src){
+lightImg.src=src;
+lightbox.classList.add("show");
+}
+
+function closePhoto(){
+lightbox.classList.remove("show");
+}
+
+function renderProfile(){
+profileText.innerHTML=`
+Name: ${me?.email||""}<br>
+Rolle: ${profile?.role||"user"}<br>
+Plan: ${profile?.premium_plan||"free"}
+`;
+}
+
+(async()=>{
+loadSavedGPS();
+
+let s=(await sb.auth.getSession()).data.session;
+
+if(s){
+me=s.user;
+nav.classList.remove("hide");
+show("home");
+ensureGPS(false);
+}else{
+show("auth");
+}
+})();
+</script>
+</body>
+</html>
