@@ -1,0 +1,1054 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050805">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="HausRadar">
+<title>HausRadar V7 Stable</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+:root{
+--bg:#050805;
+--card:#11150f;
+--card2:#1a2015;
+--line:#303b29;
+--txt:#f5f3ea;
+--muted:#a7a79b;
+--green:#8cff1a;
+--orange:#ff9900;
+--red:#ff554a;
+--blue:#68b9ff;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+margin:0;
+background:radial-gradient(circle at 20% 0,rgba(88,160,40,.25),transparent 32%),linear-gradient(180deg,#081006,#050805 70%);
+color:var(--txt);
+font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;
+min-height:100vh;
+}
+.app{
+max-width:430px;
+margin:auto;
+padding:calc(env(safe-area-inset-top) + 12px) 14px 112px;
+}
+.screen{display:none}
+.screen.show{display:block}
+h1{font-size:34px;margin:10px 0 4px}
+h2{font-size:26px;margin:0 0 10px}
+h3{margin:0 0 8px}
+.card{
+background:linear-gradient(180deg,var(--card2),var(--card));
+border:1px solid var(--line);
+border-radius:28px;
+padding:16px;
+margin:12px 0;
+box-shadow:0 18px 45px #0008;
+}
+.center{text-align:center}
+.logo{
+width:110px;
+height:110px;
+border-radius:28px;
+display:flex;
+align-items:center;
+justify-content:center;
+margin:auto;
+background:#07110c;
+border:1px solid #40552c;
+font-size:54px;
+}
+.small{color:var(--muted);font-size:14px;line-height:1.45}
+input,select,textarea{
+width:100%;
+border:1px solid #223228;
+background:#07110c;
+color:#fff;
+border-radius:18px;
+padding:15px;
+margin:7px 0;
+font-size:16px;
+outline:none;
+}
+textarea{min-height:92px;resize:vertical}
+button{
+border:0;
+border-radius:18px;
+padding:15px;
+margin-top:8px;
+font-weight:900;
+font-size:16px;
+width:100%;
+cursor:pointer;
+}
+.main{background:var(--green);color:#111}
+.dark{background:#101720;color:#fff}
+.orange{background:var(--orange);color:#171006}
+.danger{background:var(--red);color:#fff}
+.row{display:flex;align-items:center;gap:10px}
+.space{justify-content:space-between}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.badge{
+display:inline-flex;
+padding:7px 11px;
+border-radius:999px;
+font-size:13px;
+font-weight:900;
+margin:4px 5px 0 0;
+}
+.green{background:#183b08;color:var(--green)}
+.blue{background:#082238;color:#9fd4ff}
+.amber{background:#2b1a00;color:#ffc15a}
+.red{background:#35100d;color:#ffaaa5}
+.nav{
+position:fixed;
+left:50%;
+bottom:0;
+transform:translateX(-50%);
+width:min(430px,100%);
+display:grid;
+grid-template-columns:repeat(5,1fr);
+gap:6px;
+padding:10px 10px calc(10px + env(safe-area-inset-bottom));
+background:rgba(0,0,0,.9);
+backdrop-filter:blur(12px);
+z-index:50;
+}
+.nav button{
+margin:0;
+background:transparent;
+color:#fff;
+font-size:13px;
+padding:10px 4px;
+}
+.nav button.on{
+background:#111a13;
+color:var(--green);
+}
+.hide{display:none!important}
+.pass{position:relative}
+.eye{
+position:absolute;
+right:8px;
+top:8px;
+width:44px;
+height:44px;
+margin:0;
+padding:0;
+background:#132017;
+color:#fff;
+border:1px solid #2b392c;
+}
+.modal{display:none}
+#map{
+height:380px;
+border-radius:24px;
+overflow:hidden;
+}
+.box{
+background:linear-gradient(180deg,#191d16,#0d100c);
+border:1px solid #35412e;
+border-radius:22px;
+padding:14px;
+margin-top:12px;
+}
+.bar{
+height:8px;
+background:#050805;
+border-radius:999px;
+overflow:hidden;
+margin:10px 0;
+}
+.bar b{
+display:block;
+height:100%;
+background:linear-gradient(90deg,var(--orange),var(--green));
+}
+a.tile{
+display:block;
+text-decoration:none;
+color:#fff;
+background:#111720;
+border-radius:20px;
+padding:18px;
+text-align:center;
+font-size:22px;
+font-weight:900;
+}
+.superOnly{display:none}
+body.superadmin .superOnly{display:block}
+</style>
+</head>
+<body>
+<div class="app">
+  <section id="auth" class="screen show">
+<div class="card center">
+<div class="logo">🏚️</div>
+<h1>HausRadar</h1>
+<div class="small">Lost Places finden, speichern und prüfen</div>
+
+<input id="loginEmail" placeholder="E-Mail">
+<div class="pass">
+<input id="loginPass" type="password" placeholder="Passwort">
+<button class="eye" onclick="togglePass('loginPass')">👁</button>
+</div>
+
+<button class="main" onclick="login()">Einloggen</button>
+<button class="dark" onclick="openReg()">Registrieren</button>
+<button class="orange" onclick="resetPw()">Passwort vergessen</button>
+<div id="authMsg" class="small"></div>
+</div>
+</section>
+
+<section id="register" class="screen">
+<div class="card">
+<h2>Registrieren</h2>
+<input id="regName" placeholder="Name">
+<input id="regEmail" placeholder="E-Mail">
+<div class="pass">
+<input id="regPass" type="password" placeholder="Passwort">
+<button class="eye" onclick="togglePass('regPass')">👁</button>
+</div>
+<button class="main" onclick="registerUser()">Konto erstellen</button>
+<button class="dark" onclick="show('auth')">Zurück</button>
+<div id="regMsg" class="small"></div>
+</div>
+</section>
+
+<section id="home" class="screen">
+<div class="card">
+<h2>Home</h2>
+<div class="grid">
+<a class="tile" onclick="show('places')">📍 Lost Places</a>
+<a class="tile" onclick="show('radar')">📡 Radar</a>
+<a class="tile" onclick="show('add')">➕ Hinzufügen</a>
+<a class="tile" onclick="show('mapsec')">🗺️ Karte</a>
+<a class="tile" onclick="show('profile')">👤 Profil</a>
+<a class="tile superOnly" onclick="show('importsec')">📥 Maps Import</a>
+</div>
+</div>
+</section>
+
+<section id="places" class="screen">
+<div class="card">
+<h2>Lost Places</h2>
+<div id="placesList"></div>
+</div>
+</section>
+
+<section id="add" class="screen">
+<div class="card">
+<h2>Ort hinzufügen</h2>
+<input id="pName" placeholder="Name">
+<div class="grid">
+<input id="pCity" placeholder="Stadt">
+<select id="pState">
+<option>Nordrhein-Westfalen</option>
+<option>Berlin</option>
+<option>Bayern</option>
+<option>Hessen</option>
+<option>Hamburg</option>
+<option>Niedersachsen</option>
+<option>Sachsen</option>
+</select>
+</div>
+
+<div class="grid">
+<select id="pType">
+<option>Haus</option>
+<option>Gebäude</option>
+<option>Fabrik</option>
+<option>Militär</option>
+</select>
+
+<select id="pVeg">
+<option>egal</option>
+<option>wenig Vegetation</option>
+<option>viel Vegetation</option>
+</select>
+</div>
+
+<div class="grid">
+<input id="pLat" placeholder="Breitengrad">
+<input id="pLng" placeholder="Längengrad">
+</div>
+
+<textarea id="pDesc" placeholder="Beschreibung"></textarea>
+
+<div class="grid">
+<label><input type="checkbox" id="pRoof"> Dach kaputt</label>
+<label><input type="checkbox" id="pWindow"> Fenster kaputt</label>
+</div>
+
+<input type="file" id="pFiles" multiple accept="image/*">
+
+<button class="main" onclick="savePlace()">Speichern</button>
+<div id="addMsg" class="small"></div>
+</div>
+</section>
+
+<section id="radar" class="screen">
+<div class="card">
+<h2>Radar</h2>
+
+<input id="rCity" placeholder="Stadt suchen">
+
+<div class="grid">
+<select id="rState">
+<option>Alle Bundesländer</option>
+<option>Nordrhein-Westfalen</option>
+<option>Berlin</option>
+<option>Bayern</option>
+<option>Hessen</option>
+<option>Hamburg</option>
+<option>Niedersachsen</option>
+<option>Sachsen</option>
+</select>
+
+<select id="rType">
+<option>Haus</option>
+<option>Gebäude</option>
+<option>Fabrik</option>
+<option>Militär</option>
+</select>
+</div>
+
+<div class="grid">
+<input id="rRadius" type="number" value="25" placeholder="km Radius">
+<select id="rCountry">
+<option>Deutschland</option>
+<option>Niederlande</option>
+<option>Belgien</option>
+</select>
+</div>
+
+<button class="main" onclick="runRadar()">Radar starten</button>
+<div id="radarMsg" class="small"></div>
+<div id="radarList"></div>
+</div>
+</section>
+<section id="mapsec" class="screen">
+<div class="card">
+<h2>Karte</h2>
+<div id="map"></div>
+</div>
+</section>
+
+<section id="importsec" class="screen">
+<div class="card">
+<h2>📥 Google Maps Orte importieren</h2>
+<div class="small">
+Nur Superadmin. Füge den Google-MyMaps-Link ein oder exportiere KML und füge den KML-Text hier ein.
+</div>
+
+<input id="importUrl" placeholder="Google MyMaps / KML Link">
+<button class="dark" onclick="loadKmlFromUrl()">KML von Link laden</button>
+
+<textarea id="importKml" placeholder="Oder KML-Text hier einfügen"></textarea>
+
+<div class="grid">
+<select id="importType">
+<option>Haus</option>
+<option>Gebäude</option>
+<option>Fabrik</option>
+<option>Militär</option>
+</select>
+
+<select id="importState">
+<option>Nordrhein-Westfalen</option>
+<option>Berlin</option>
+<option>Bayern</option>
+<option>Hessen</option>
+<option>Hamburg</option>
+<option>Niedersachsen</option>
+<option>Sachsen</option>
+<option>Unbekannt</option>
+</select>
+</div>
+
+<input id="importCity" placeholder="Stadt optional">
+
+<button class="main" onclick="importKmlPlaces()">Orte importieren</button>
+<div id="importMsg" class="small"></div>
+<div id="importPreview"></div>
+</div>
+</section>
+
+<section id="profile" class="screen">
+<div class="card">
+<h2>Profil</h2>
+<div id="profileBox"></div>
+<button class="danger" onclick="logout()">Logout</button>
+</div>
+</section>
+
+<div class="nav">
+<button onclick="show('home')">Home</button>
+<button onclick="show('places')">Orte</button>
+<button onclick="show('radar')">Radar</button>
+<button onclick="show('mapsec')">Karte</button>
+<button onclick="show('profile')">Profil</button>
+</div>
+
+<script>
+const SUPABASE_URL="https://qvurspabnycapkdqghcz.supabase.co";
+const SUPABASE_KEY="sb_publishable_qxi95bPYaRUrBuBjE8iD2A_gE3SVe2C";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+const ADMIN_EMAILS=[
+"samirjoel18@hotmail.com",
+"info@safeclean-tatortservice.de",
+"anja_hoeger96@web.de",
+"tuttywpt31@gmail.com"
+];
+
+let me=null;
+let places=[];
+let map=null;
+let gps=null;
+
+function $(id){return document.getElementById(id)}
+
+function show(id){
+document.querySelectorAll(".screen").forEach(s=>s.classList.remove("show"));
+$(id).classList.add("show");
+
+document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("on"));
+
+if(id==="places")loadPlaces();
+if(id==="mapsec")drawMap();
+if(id==="profile")loadProfile();
+if(id==="importsec")$("importMsg").textContent="";
+}
+
+function togglePass(id){
+let x=$(id);
+x.type=x.type==="password"?"text":"password";
+}
+
+function isSuper(){
+if(!me)return false;
+return ADMIN_EMAILS.includes((me.email||"").toLowerCase());
+}
+
+function distance(a,b,c,d){
+const R=6371;
+const dLat=(c-a)*Math.PI/180;
+const dLon=(d-b)*Math.PI/180;
+const q=
+Math.sin(dLat/2)*Math.sin(dLat/2)+
+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*
+Math.sin(dLon/2)*Math.sin(dLon/2);
+return R*(2*Math.atan2(Math.sqrt(q),Math.sqrt(1-q)));
+}
+
+function fmt(v){
+return Number(v||0).toFixed(1)+" km";
+}
+
+async function ensureGPS(){
+return new Promise(res=>{
+navigator.geolocation.getCurrentPosition(p=>{
+gps={
+lat:p.coords.latitude,
+lng:p.coords.longitude
+};
+res(gps);
+},()=>{
+res(null);
+},{enableHighAccuracy:true,timeout:8000});
+});
+}
+  async function openReg(){
+show("register");
+}
+
+async function registerUser(){
+let email=$("regEmail").value.trim();
+let pass=$("regPass").value.trim();
+let name=$("regName").value.trim();
+
+let r=await sb.auth.signUp({
+email:email,
+password:pass,
+options:{
+data:{display_name:name}
+}
+});
+
+if(r.error){
+$("regMsg").textContent=r.error.message;
+}else{
+$("regMsg").textContent="Registrierung erfolgreich. Jetzt einloggen.";
+}
+}
+
+async function login(){
+let email=$("loginEmail").value.trim();
+let pass=$("loginPass").value.trim();
+
+let r=await sb.auth.signInWithPassword({
+email:email,
+password:pass
+});
+
+if(r.error){
+$("authMsg").textContent=r.error.message;
+return;
+}
+
+me=r.data.user;
+show("home");
+loadProfile();
+}
+
+async function resetPw(){
+let email=$("loginEmail").value.trim();
+if(!email){
+$("authMsg").textContent="Bitte E-Mail eingeben.";
+return;
+}
+
+let r=await sb.auth.resetPasswordForEmail(email,{
+redirectTo:location.href
+});
+
+$("authMsg").textContent=r.error?r.error.message:"E-Mail gesendet.";
+}
+
+async function logout(){
+await sb.auth.signOut();
+me=null;
+show("auth");
+}
+
+async function loadProfile(){
+if(!me)return;
+
+$("profileBox").innerHTML=`
+<div class="small">E-Mail: ${me.email}</div>
+<div class="small">Name: ${me.user_metadata?.display_name||"-"}</div>
+<div class="small">Status: ${isSuper()?"Superadmin":"User"}</div>
+`;
+
+if(isSuper()){
+document.body.classList.add("superadmin");
+}else{
+document.body.classList.remove("superadmin");
+}
+}
+
+async function loadPlaces(){
+let r=await sb.from("places").select("*").order("id",{ascending:false});
+places=r.data||[];
+
+$("placesList").innerHTML=places.map(p=>`
+<div class="box">
+<div class="row space">
+<div>
+<h3>${p.title||"-"}</h3>
+<div class="small">${p.city||""} ${p.state||""}</div>
+</div>
+<span class="badge green">${p.type||"Ort"}</span>
+</div>
+
+<div class="small">${p.description||""}</div>
+<div class="small">${Number(p.lat).toFixed(5)}, ${Number(p.lng).toFixed(5)}</div>
+
+<div class="grid">
+<button class="dark" onclick="openMap(${p.lat},${p.lng},'${String(p.title).replaceAll("'","")}')">Karte</button>
+<button class="orange" onclick="routeTo(${p.lat},${p.lng})">Route</button>
+</div>
+
+${isSuper()?`
+<button class="danger" onclick="deletePlace(${p.id})">Löschen</button>
+`:""}
+
+</div>
+`).join("");
+}
+
+async function savePlace(){
+if(!me){
+show("auth");
+return;
+}
+
+let data={
+user_id:me.id,
+title:$("pName").value,
+city:$("pCity").value,
+state:$("pState").value,
+type:$("pType").value,
+vegetation:$("pVeg").value,
+roof_damage:$("pRoof").checked,
+window_damage:$("pWindow").checked,
+description:$("pDesc").value,
+lat:Number($("pLat").value),
+lng:Number($("pLng").value)
+};
+
+let r=await sb.from("places").insert(data);
+
+$("addMsg").textContent=r.error?r.error.message:"Gespeichert.";
+
+if(!r.error){
+$("pName").value="";
+$("pDesc").value="";
+loadPlaces();
+}
+}
+
+async function deletePlace(id){
+if(!confirm("Wirklich löschen?"))return;
+await sb.from("places").delete().eq("id",id);
+loadPlaces();
+}
+
+function openMap(lat,lng,name){
+window.open(
+"https://www.google.com/maps?q="+lat+","+lng,
+"_blank"
+);
+}
+
+function routeTo(lat,lng){
+window.open(
+"https://www.google.com/maps/dir/?api=1&destination="+lat+","+lng,
+"_blank"
+);
+}
+
+function drawMap(){
+if(!map){
+map=L.map("map").setView([51.3,7.2],8);
+
+L.tileLayer(
+"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+{maxZoom:19}
+).addTo(map);
+}
+  function finishMap(){
+markers.forEach(m=>map.removeLayer(m));
+markers=[];
+
+places.forEach(p=>{
+if(!p.lat||!p.lng)return;
+
+let marker=L.marker([p.lat,p.lng])
+.addTo(map)
+.bindPopup("<b>"+(p.title||"Ort")+"</b><br>"+(p.city||""));
+
+markers.push(marker);
+});
+
+setTimeout(()=>map.invalidateSize(),200);
+}
+
+async function geocodeRadarPlace(){
+let city=$("rCity").value.trim();
+let state=$("rState").value==="Alle Bundesländer"?"":$("rState").value;
+let country=$("rCountry").value||"Deutschland";
+
+if(city){
+let q=encodeURIComponent([city,state,country].filter(Boolean).join(", "));
+let res=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+q);
+let data=await res.json();
+
+if(data&&data[0]){
+return {
+lat:Number(data[0].lat),
+lng:Number(data[0].lon),
+label:data[0].display_name
+};
+}
+}
+
+let g=await ensureGPS();
+
+if(g){
+return {
+lat:g.lat,
+lng:g.lng,
+label:"dein Standort"
+};
+}
+
+return null;
+}
+
+function suspicionScore(tags){
+let t=JSON.stringify(tags||{}).toLowerCase();
+let score=50;
+
+if(t.includes("abandoned"))score+=35;
+if(t.includes("disused"))score+=28;
+if(t.includes("ruin"))score+=30;
+if(t.includes("vacant"))score+=20;
+if(t.includes("derelict"))score+=25;
+if(t.includes("unused"))score+=18;
+if(t.includes("industrial"))score+=10;
+if(t.includes("warehouse"))score+=9;
+if(t.includes("farm"))score+=7;
+
+return Math.min(score,99);
+}
+
+function activeTagBlock(tags){
+let t=JSON.stringify(tags||{}).toLowerCase();
+
+if(
+t.includes('"amenity":"hospital"')||
+t.includes('"amenity":"school"')||
+t.includes('"tourism":"hotel"')||
+t.includes('"shop"')||
+t.includes('"office"')||
+t.includes('"company"')
+){
+if(
+!t.includes("abandoned") &&
+!t.includes("disused") &&
+!t.includes("ruin") &&
+!t.includes("vacant") &&
+!t.includes("derelict")
+)return true;
+}
+
+if(
+t.includes('"natural":"wood"')||
+t.includes('"landuse":"forest"')||
+t.includes('"leisure":"park"')||
+t.includes('"natural":"tree"')
+)return true;
+
+return false;
+}
+
+function lostHint(tags){
+let t=JSON.stringify(tags||{}).toLowerCase();
+
+return (
+t.includes("abandoned")||
+t.includes("disused")||
+t.includes("ruins")||
+t.includes("ruin")||
+t.includes("vacant")||
+t.includes("derelict")||
+t.includes("unused")||
+t.includes("empty")
+);
+}
+
+async function searchOSMRadar(center){
+let radius=Math.min(Number($("rRadius").value||25)*1000,50000);
+
+let query=`[out:json][timeout:25];
+(
+way(around:${radius},${center.lat},${center.lng})["building"]["abandoned"];
+relation(around:${radius},${center.lat},${center.lng})["building"]["abandoned"];
+
+way(around:${radius},${center.lat},${center.lng})["building"]["disused"];
+relation(around:${radius},${center.lat},${center.lng})["building"]["disused"];
+
+way(around:${radius},${center.lat},${center.lng})["building"]["ruins"];
+relation(around:${radius},${center.lat},${center.lng})["building"]["ruins"];
+
+way(around:${radius},${center.lat},${center.lng})["abandoned"="yes"];
+relation(around:${radius},${center.lat},${center.lng})["abandoned"="yes"];
+
+way(around:${radius},${center.lat},${center.lng})["disused"="yes"];
+relation(around:${radius},${center.lat},${center.lng})["disused"="yes"];
+
+way(around:${radius},${center.lat},${center.lng})["ruins"="yes"];
+relation(around:${radius},${center.lat},${center.lng})["ruins"="yes"];
+
+way(around:${radius},${center.lat},${center.lng})["vacant"="yes"];
+relation(around:${radius},${center.lat},${center.lng})["vacant"="yes"];
+
+way(around:${radius},${center.lat},${center.lng})["derelict"="yes"];
+relation(around:${radius},${center.lat},${center.lng})["derelict"="yes"];
+
+way(around:${radius},${center.lat},${center.lng})["disused:building"];
+relation(around:${radius},${center.lat},${center.lng})["disused:building"];
+
+way(around:${radius},${center.lat},${center.lng})["abandoned:building"];
+relation(around:${radius},${center.lat},${center.lng})["abandoned:building"];
+);
+out center tags 100;`;
+
+let res=await fetch("https://overpass-api.de/api/interpreter",{
+method:"POST",
+headers:{
+"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"
+},
+body:"data="+encodeURIComponent(query)
+});
+
+let data=await res.json();
+
+return (data.elements||[]).map(e=>{
+let lat=e.lat||e.center?.lat;
+let lng=e.lon||e.center?.lon;
+let tags=e.tags||{};
+let title=
+tags.name||
+tags["addr:housename"]||
+tags.building||
+tags["abandoned:building"]||
+tags["disused:building"]||
+"Verlassenes Gebäude";
+
+return {
+source:"osm",
+id:e.id,
+title,
+type:$("rType").value||"Gebäude",
+lat,
+lng,
+tags,
+score:suspicionScore(tags),
+km:lat&&lng?distance(center.lat,center.lng,lat,lng):null
+};
+}).filter(x=>x.lat&&x.lng&&!activeTagBlock(x.tags)&&lostHint(x.tags));
+}
+
+async function runRadar(){
+$("radarMsg").textContent="Radar sucht Ort ...";
+
+let center=await geocodeRadarPlace();
+
+if(!center){
+$("radarMsg").textContent="Ort nicht gefunden oder Standort nicht erlaubt.";
+return;
+}
+
+await loadPlaces();
+
+let city=$("rCity").value.trim().toLowerCase();
+let type=$("rType").value;
+let radius=Number($("rRadius").value||25);
+
+let saved=places.filter(p=>
+(!city||(p.city||"").toLowerCase().includes(city)) &&
+(!type||p.type===type)
+).map(p=>({
+...p,
+source:"saved",
+score:98,
+km:distance(center.lat,center.lng,Number(p.lat),Number(p.lng))
+}))
+.filter(p=>p.km<=radius)
+.sort((a,b)=>a.km-b.km);
+
+$("radarMsg").textContent="Radar läuft in: "+center.label+" ...";
+
+let osm=[];
+
+try{
+osm=await searchOSMRadar(center);
+}catch(e){
+console.log(e);
+}
+
+let all=[...saved,...osm];
+
+$("radarMsg").textContent=
+saved.length+" gespeicherte Treffer + "+
+osm.length+" neue verlassene Gebäude gefunden.";
+
+$("radarList").innerHTML=all.map(p=>`
+<div class="box">
+<div class="row space">
+<div>
+<h3>${p.title}</h3>
+<div class="small">${p.source==="saved"?"Gespeichert":"OSM-Lost"}</div>
+</div>
+<span class="badge ${p.source==="saved"?"green":"amber"}">${p.score}%</span>
+</div>
+
+<div class="bar"><b style="width:${p.score}%"></b></div>
+
+<div class="small">${p.type||"Gebäude"} · ${fmt(p.km)} vom Suchzentrum</div>
+
+<div class="grid">
+<button class="dark" onclick="openMap(${p.lat},${p.lng},'${String(p.title).replaceAll("'","")}')">Karte</button>
+<button class="main" onclick="prefillOSM('${String(p.title).replaceAll("'","")}',${p.lat},${p.lng},'${p.type||"Gebäude"}')">Übernehmen</button>
+</div>
+</div>
+`).join("")||'<div class="box">Keine Treffer gefunden.</div>';
+}
+  function prefillOSM(title,lat,lng,type){
+show("add");
+$("pName").value=title;
+$("pType").value=type||"Gebäude";
+$("pLat").value=Number(lat).toFixed(6);
+$("pLng").value=Number(lng).toFixed(6);
+$("pDesc").value="Radar-Verdachtsort. Bitte vor Ort prüfen.";
+}
+
+function googleMapsKmlUrl(url){
+url=String(url||"").trim();
+let mid="";
+
+try{
+let u=new URL(url);
+mid=u.searchParams.get("mid")||"";
+}catch(e){
+let m=url.match(/mid=([^&]+)/);
+if(m)mid=m[1];
+}
+
+if(mid){
+return "https://www.google.com/maps/d/kml?mid="+encodeURIComponent(mid)+"&forcekml=1";
+}
+
+return url;
+}
+
+async function loadKmlFromUrl(){
+if(!isSuper()){
+$("importMsg").textContent="Nur Superadmin darf importieren.";
+return;
+}
+
+let url=googleMapsKmlUrl($("importUrl").value);
+
+if(!url){
+$("importMsg").textContent="Bitte Link einfügen.";
+return;
+}
+
+$("importMsg").textContent="Lade KML ...";
+
+try{
+let res=await fetch(url);
+let txt=await res.text();
+
+if(!txt||txt.length<50){
+$("importMsg").textContent="Keine KML-Daten gefunden.";
+return;
+}
+
+$("importKml").value=txt;
+previewKmlPlaces();
+
+}catch(e){
+console.log(e);
+$("importMsg").textContent="Direkter Import blockiert. Bitte KML exportieren und Text einfügen.";
+}
+}
+
+function parseKmlPlaces(kml){
+let doc=new DOMParser().parseFromString(kml,"text/xml");
+let placemarks=[...doc.getElementsByTagName("Placemark")];
+let out=[];
+
+for(let pm of placemarks){
+let name=(pm.getElementsByTagName("name")[0]?.textContent||"Lost Place").trim();
+let desc=(pm.getElementsByTagName("description")[0]?.textContent||"").trim();
+let coord=(pm.getElementsByTagName("coordinates")[0]?.textContent||"").trim();
+
+if(!coord)continue;
+
+let first=coord.split(/\s+/)[0].split(",");
+let lng=Number(first[0]);
+let lat=Number(first[1]);
+
+if(!Number.isFinite(lat)||!Number.isFinite(lng))continue;
+
+out.push({
+name,
+desc,
+lat,
+lng
+});
+}
+
+return out;
+}
+
+function previewKmlPlaces(){
+let arr=parseKmlPlaces($("importKml").value||"");
+
+$("importPreview").innerHTML=arr.slice(0,15).map(p=>`
+<div class="box">
+<b>${p.name}</b>
+<div class="small">${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}</div>
+</div>
+`).join("");
+
+$("importMsg").textContent=arr.length+" Orte erkannt.";
+
+return arr;
+}
+
+async function importKmlPlaces(){
+if(!isSuper()){
+$("importMsg").textContent="Nur Superadmin darf importieren.";
+return;
+}
+
+let arr=previewKmlPlaces();
+
+if(!arr.length){
+$("importMsg").textContent="Keine Orte erkannt. Bitte KML prüfen.";
+return;
+}
+
+if(!confirm(arr.length+" Orte wirklich importieren?"))return;
+
+$("importMsg").textContent="Import läuft ...";
+
+let ok=0;
+let fail=0;
+
+for(let p of arr){
+let r=await sb.from("places").insert({
+user_id:me.id,
+title:p.name,
+city:$("importCity").value||"",
+state:$("importState").value==="Unbekannt"?"":$("importState").value,
+type:$("importType").value||"Gebäude",
+vegetation:"egal",
+roof_damage:false,
+window_damage:false,
+description:p.desc||"Import aus Google MyMaps/KML. Bitte prüfen.",
+lat:p.lat,
+lng:p.lng
+});
+
+if(r.error)fail++;
+else ok++;
+}
+
+$("importMsg").textContent=ok+" Orte importiert. Fehler: "+fail;
+
+loadPlaces();
+}
+
+(async()=>{
+let s=null;
+
+try{
+s=(await sb.auth.getSession()).data.session;
+}catch(e){
+console.log(e);
+}
+
+if(s){
+me=s.user;
+show("home");
+loadProfile();
+}else{
+show("auth");
+}
+})();
+</script>
+</body>
+</html>
