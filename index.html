@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HausRadar</title>
+
+<style>
+body{margin:0;background:#050805;color:#fff;font-family:Arial}
+
+/* Screens */
+.screen{display:none;height:100vh;padding:20px}
+.active{display:block}
+
+/* Nav */
+#nav{
+position:fixed;
+bottom:0;
+width:100%;
+display:flex;
+background:#111;
+}
+
+#nav button{
+flex:1;
+padding:15px;
+border:none;
+background:#111;
+color:#fff;
+}
+
+/* Inputs */
+input{
+width:100%;
+padding:12px;
+margin-top:10px;
+border-radius:10px;
+border:none;
+background:#111;
+color:#fff;
+}
+
+button.main{
+width:100%;
+padding:12px;
+margin-top:10px;
+background:#1f6feb;
+border:none;
+border-radius:10px;
+color:#fff;
+}
+
+/* List */
+.place{
+background:#111;
+padding:10px;
+margin-top:10px;
+border-radius:10px;
+}
+
+/* Ghost */
+#ghostWord{
+position:absolute;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+font-size:50px;
+color:red;
+text-shadow:0 0 25px red;
+display:none;
+}
+</style>
+</head>
+
+<body>
+
+<!-- HOME -->
+<div id="home" class="screen active">
+<h2>🏠 HausRadar</h2>
+<p>Willkommen</p>
+</div>
+
+<!-- LOST -->
+<div id="lost" class="screen">
+<h2>📍 Lost Places</h2>
+
+<input id="name" placeholder="Name des Ortes">
+<input id="lat" placeholder="Latitude">
+<input id="lng" placeholder="Longitude">
+
+<button class="main" onclick="addPlace()">Speichern</button>
+
+<div id="list"></div>
+</div>
+
+<!-- ROUTE -->
+<div id="route" class="screen">
+<h2>🧭 Route</h2>
+<p>Coming soon</p>
+</div>
+
+<!-- PROFILE -->
+<div id="profile" class="screen">
+<h2>👤 Profil</h2>
+</div>
+
+<!-- GHOST -->
+<div id="ghost" class="screen">
+
+<div id="ghostWord"></div>
+
+<input id="q" placeholder="Frage stellen">
+<button class="main" onclick="ask()">Frage senden</button>
+
+</div>
+
+<!-- NAV -->
+<div id="nav">
+<button onclick="show('home')">Home</button>
+<button onclick="show('lost')">Lost</button>
+<button onclick="show('route')">Route</button>
+<button onclick="show('ghost')">👻</button>
+<button onclick="show('profile')">Profil</button>
+</div>
+
+<script>
+
+/* NAV */
+function show(id){
+document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+document.getElementById(id).classList.add('active');
+document.getElementById('nav').style.display = (id==='ghost')?'none':'flex';
+}
+
+/* ===== LOST SYSTEM ===== */
+
+let places = JSON.parse(localStorage.getItem("places")||"[]");
+
+function save(){
+localStorage.setItem("places", JSON.stringify(places));
+}
+
+function addPlace(){
+let name=document.getElementById("name").value;
+let lat=document.getElementById("lat").value;
+let lng=document.getElementById("lng").value;
+
+if(!name||!lat||!lng)return;
+
+places.push({name,lat,lng});
+save();
+render();
+}
+
+function render(){
+let list=document.getElementById("list");
+list.innerHTML="";
+
+places.forEach(p=>{
+let div=document.createElement("div");
+div.className="place";
+div.innerHTML=p.name+" ("+p.lat+","+p.lng+")";
+list.appendChild(div);
+});
+}
+
+render();
+
+/* ===== GHOST SYSTEM ===== */
+
+let lastQ="",timeout,currentId=0;
+
+const words={
+identity:["dämon","ich","er"],
+presence:["hier","da","hinter"],
+location:["hinter","oben","unten"],
+command:["geh","lauf"],
+scary:["renn","weg","dreh dich nicht"]
+};
+
+function detect(q){
+q=q.toLowerCase();
+if(q.includes("wer"))return"identity";
+if(q.includes("wo"))return"location";
+if(q.includes("bist"))return"presence";
+return"command";
+}
+
+function getWord(q){
+let t=detect(q);
+let list=words[t]||words.command;
+if(Math.random()<0.3)list=words.scary;
+return list[Math.floor(Math.random()*list.length)];
+}
+
+function speak(w){
+let u=new SpeechSynthesisUtterance(w);
+u.lang="de-DE";
+u.rate=0.4;
+u.pitch=0.3;
+speechSynthesis.cancel();
+speechSynthesis.speak(u);
+}
+
+function showWord(w){
+let box=document.getElementById("ghostWord");
+box.innerText=w.toUpperCase();
+box.style.display="block";
+
+speak(w);
+
+setTimeout(()=>box.style.display="none",3000);
+}
+
+function answer(){
+if(!lastQ)return;
+showWord(getWord(lastQ));
+lastQ="";
+}
+
+function schedule(id){
+let delay=2000+Math.random()*28000;
+let ok=Math.random()<0.5;
+
+timeout=setTimeout(()=>{
+if(id!==currentId)return;
+if(!ok)return;
+answer();
+},delay);
+}
+
+function ask(){
+let q=document.getElementById("q").value.trim();
+if(!q)return;
+
+currentId++;
+lastQ=q;
+
+if(timeout)clearTimeout(timeout);
+
+schedule(currentId);
+}
+
+document.getElementById("q").addEventListener("keydown",e=>{
+if(e.key==="Enter")ask();
+});
+
+</script>
+
+</body>
+</html>
